@@ -14,7 +14,7 @@ export default function Navbar() {
           <div className="flex items-center">
             <div className="flex-shrink-0">
               <Link href="/" className="text-xl font-bold text-gray-800 hover:text-orange-500 transition-colors flex items-center gap-2">
-                <ChefHat className="text-orange-500" size={24} />
+                <Utensils className="text-orange-500" size={24} />
                 Summer Meal
               </Link>
             </div>
