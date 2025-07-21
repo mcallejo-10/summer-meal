@@ -276,6 +276,8 @@ export default function VotarPage() {
                             const target = e.target as HTMLImageElement;
                             target.src = '/avatars/default.jpeg';
                           }}
+                          unoptimized={true}
+                          priority={false}
                         />
                       </div>
                       <span className="text-sm font-medium text-gray-800 text-center">
