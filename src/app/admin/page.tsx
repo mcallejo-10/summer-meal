@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-auth'
@@ -23,6 +23,9 @@ export default function AdminPage() {
   
   const router = useRouter()
   const supabase = createClient()
+  
+  // Referencia para el formulario de edición
+  const formRef = useRef<HTMLDivElement>(null)
   
   // Formulario para nuevos menús o edición
   const [formData, setFormData] = useState({
@@ -152,6 +155,14 @@ export default function AdminPage() {
     })
     setEditingMenu(menu)
     setShowAddForm(true)
+    
+    // Scroll suave al formulario después de un pequeño delay
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'center' 
+      })
+    }, 100)
   }
 
   // Eliminar un menú
@@ -226,7 +237,16 @@ export default function AdminPage() {
                 Gestió de Menús
               </h2>
               <button
-                onClick={() => setShowAddForm(true)}
+                onClick={() => {
+                  setShowAddForm(true)
+                  // Scroll suave al formulario después de un pequeño delay
+                  setTimeout(() => {
+                    formRef.current?.scrollIntoView({ 
+                      behavior: 'smooth', 
+                      block: 'center' 
+                    })
+                  }, 100)
+                }}
                 className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
               >
                 <Plus size={18} />
@@ -236,10 +256,27 @@ export default function AdminPage() {
 
             {/* Formulario para agregar/editar */}
             {showAddForm && (
-              <div className="bg-gray-50 rounded-lg p-6 mb-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  {editingMenu ? 'Editar Plat' : 'Afegir Nou Plat'}
-                </h3>
+              <div ref={formRef} className="bg-gray-50 rounded-lg p-6 mb-6 border-2 border-orange-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {editingMenu ? (
+                      <span className="flex items-center gap-2">
+                        <Edit size={20} className="text-orange-500" />
+                        Editant: <span className="text-orange-600">{editingMenu.dish_name}</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Plus size={20} className="text-green-500" />
+                        Afegir Nou Plat
+                      </span>
+                    )}
+                  </h3>
+                  {editingMenu && (
+                    <div className="text-xs text-gray-500 bg-orange-100 px-2 py-1 rounded">
+                      {editingMenu.day} • {editingMenu.meal_type} • {editingMenu.diet_type}
+                    </div>
+                  )}
+                </div>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -348,31 +385,45 @@ export default function AdminPage() {
                   menus.map((menu) => (
                     <div
                       key={menu.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border"
+                      className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
+                        editingMenu?.id === menu.id 
+                          ? 'bg-orange-50 border-orange-300 shadow-md' 
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
                     >
-                      <div className="flex-1">
-                        <h4 className="font-medium text-gray-800">
-                          {menu.dish_name}
-                        </h4>
-                        <div className="flex gap-4 text-sm text-gray-600 mt-1">
-                          <span className="capitalize">{menu.day}</span>
-                          <span className="capitalize">{menu.meal_type}</span>
-                          <span 
-                            className={`px-2 py-1 rounded-full text-xs text-white ${
-                              menu.diet_type === 'omnivora' ? 'bg-red-500' :
-                              menu.diet_type === 'vegetariana' ? 'bg-green-500' :
-                              'bg-emerald-500'
-                            }`}
-                          >
-                            {menu.diet_type}
-                          </span>
+                      <div className="flex items-center gap-3 flex-1">
+                        {editingMenu?.id === menu.id && (
+                          <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+                        )}
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-800">
+                            {menu.dish_name}
+                          </h4>
+                          <div className="flex gap-4 text-sm text-gray-600 mt-1">
+                            <span className="capitalize">{menu.day}</span>
+                            <span className="capitalize">{menu.meal_type}</span>
+                            <span 
+                              className={`px-2 py-1 rounded-full text-xs text-white ${
+                                menu.diet_type === 'omnivora' ? 'bg-red-500' :
+                                menu.diet_type === 'vegetariana' ? 'bg-green-500' :
+                                'bg-emerald-500'
+                              }`}
+                            >
+                              {menu.diet_type}
+                            </span>
+                          </div>
                         </div>
                       </div>
                       
                       <div className="flex gap-2">
                         <button
                           onClick={() => startEdit(menu)}
-                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                          className={`p-2 rounded-lg transition-colors ${
+                            editingMenu?.id === menu.id
+                              ? 'text-orange-600 bg-orange-100'
+                              : 'text-blue-600 hover:bg-blue-100'
+                          }`}
+                          title={editingMenu?.id === menu.id ? 'Editant aquest plat' : 'Editar plat'}
                         >
                           <Edit size={16} />
                         </button>

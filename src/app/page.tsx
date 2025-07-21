@@ -262,9 +262,10 @@ export default function Home() {
                 onClick={() => setSelectedMealType('sopar')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   selectedMealType === 'sopar'
-                    ? 'bg-purple-500 text-white'
+                    ? 'text-white'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
+                style={selectedMealType === 'sopar' ? {backgroundColor: '#2a747f'} : {}}
               >
                 🌙 Sopar
               </button>

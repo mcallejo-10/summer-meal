@@ -139,7 +139,7 @@ export default function MenuPage() {
                 {/* Sopar */}
                 {dayMenus.sopar.length > 0 && (
                   <div>
-                    <h3 className="text-lg font-semibold text-purple-600 mb-3 flex items-center gap-2">
+                    <h3 className="text-lg font-semibold mb-3 flex items-center gap-2" style={{color: '#2a747f'}}>
                       🌙 Sopar
                     </h3>
                     <div className="grid md:grid-cols-3 gap-4">
