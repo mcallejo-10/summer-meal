@@ -183,18 +183,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* Enlace a login para administradores */}
-          <div className="text-center mb-6">
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium text-sm"
-            >
-              <Settings size={16} />
-              Accés d&apos;Administrador
-            </Link>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
             {users.map((user) => (
               <button
                 key={user.id}

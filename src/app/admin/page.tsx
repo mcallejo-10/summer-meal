@@ -4,11 +4,13 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-auth'
+import type { Session, User } from '@supabase/supabase-js'
 import { 
   getMenus, 
   createMenu, 
   updateMenu, 
   deleteMenu,
+  getVoteStats,
   type Menu 
 } from '@/lib/supabase'
 
@@ -18,8 +20,26 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingMenu, setEditingMenu] = useState<Menu | null>(null)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
+  
+  // Obtener fecha de mañana por defecto
+  const tomorrow = new Date()
+  tomorrow.setDate(tomorrow.getDate() + 1)
+  const tomorrowString = tomorrow.toISOString().split('T')[0]
+  
+  interface VoteStats {
+    [meal_type: string]: {
+      [choice: string]: {
+        count: number
+        users: string[]
+      }
+    }
+  }
+  
+  const [voteStats, setVoteStats] = useState<VoteStats | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string>(tomorrowString)
+  const [loadingVotes, setLoadingVotes] = useState(false)
   
   const router = useRouter()
   const supabase = createClient()
@@ -47,6 +67,19 @@ export default function AdminPage() {
     }
   }, [])
 
+  // Función para cargar estadísticas de votos
+  const loadVoteStats = useCallback(async (date: string) => {
+    setLoadingVotes(true)
+    try {
+      const stats = await getVoteStats(date)
+      setVoteStats(stats)
+    } catch (error) {
+      console.error('Error carregant estadístiques de vots:', error)
+    } finally {
+      setLoadingVotes(false)
+    }
+  }, [])
+
   // Verificar estado de autenticación
   const checkAuth = useCallback(async () => {
     try {
@@ -71,9 +104,9 @@ export default function AdminPage() {
     checkAuth()
     
     // Escuchar cambios en la autenticación
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
       if (event === 'SIGNED_IN') {
-        setUser(session?.user)
+        setUser(session?.user || null)
         setAuthLoading(false)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
@@ -83,6 +116,13 @@ export default function AdminPage() {
 
     return () => subscription.unsubscribe()
   }, [checkAuth, router, supabase.auth])
+
+  // Cargar estadísticas cuando cambie la fecha o la pestaña
+  useEffect(() => {
+    if (selectedTab === 'votes' && user) {
+      loadVoteStats(selectedDate)
+    }
+  }, [selectedTab, selectedDate, user, loadVoteStats])
 
   // Cerrar sesión
   const handleLogout = async () => {
@@ -444,13 +484,95 @@ export default function AdminPage() {
 
         {selectedTab === 'votes' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
-              Resultats de Vots
-            </h2>
-            <p className="text-gray-600">
-              Aquí podràs veure els resultats dels vots en temps real.
-            </p>
-            {/* Aquí agregaremos la visualización de votos en el siguiente paso */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-800">
+                Resultats de Vots
+              </h2>
+              <div className="flex items-center gap-4">
+                <label className="font-medium text-gray-700">
+                  Data:
+                </label>
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+
+            {loadingVotes ? (
+              <div className="text-center py-8">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                <p className="mt-2 text-gray-600">Carregant estadístiques...</p>
+              </div>
+            ) : voteStats && Object.keys(voteStats).length > 0 ? (
+              <div className="space-y-8">
+                {Object.entries(voteStats).map(([mealType, choices]) => (
+                  <div key={mealType} className="border rounded-lg p-6">
+                    <h3 className={`text-xl font-bold mb-4 capitalize ${
+                      mealType === 'dinar' ? 'text-yellow-600' : 'text-[#2a747f]'
+                    }`}>
+                      {mealType === 'dinar' ? '🌞 Dinar' : '🌙 Sopar'}
+                    </h3>
+                    
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {Object.entries(choices).map(([choice, data]) => (
+                        <div key={choice} className="bg-gray-50 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-semibold text-gray-800 text-lg">
+                              {choice}
+                            </h4>
+                            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
+                              mealType === 'dinar' 
+                                ? 'bg-yellow-100 text-yellow-800' 
+                                : 'bg-teal-100 text-[#2a747f]'
+                            }`}>
+                              {data.count} {data.count === 1 ? 'vot' : 'vots'}
+                            </span>
+                          </div>
+                          
+                          {data.users.length > 0 && (
+                            <div className="mt-3">
+                              <p className="text-sm font-medium text-gray-600 mb-2">
+                                Persones:
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {data.users.map((user, index) => (
+                                  <span
+                                    key={index}
+                                    className="px-2 py-1 bg-white rounded text-xs text-gray-700 border"
+                                  >
+                                    {user}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <p className="text-sm text-gray-600">
+                        <strong>Total de vots per {mealType}:</strong> {' '}
+                        {Object.values(choices).reduce((sum, data) => sum + data.count, 0)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8">
+                <BarChart3 className="mx-auto text-gray-400 mb-4" size={64} />
+                <p className="text-gray-600">
+                  No hi ha vots registrats per aquesta data.
+                </p>
+                <p className="text-sm text-gray-500 mt-2">
+                  Prova amb una altra data o assegura&apos;t que hi hagi menús disponibles.
+                </p>
+              </div>
+            )}
           </div>
         )}
       </div>

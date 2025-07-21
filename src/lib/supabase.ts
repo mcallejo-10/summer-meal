@@ -165,6 +165,44 @@ export async function getVotesByDate(date: string) {
   return data || []
 }
 
+// Nueva función para obtener estadísticas de votos
+export async function getVoteStats(date: string) {
+  const { data, error } = await supabase
+    .from('votes')
+    .select(`
+      choice,
+      meal_type,
+      users(name)
+    `)
+    .eq('date', date)
+  
+  if (error) {
+    console.error('Error obtenint estadístiques de vots:', error)
+    return { dinar: {}, sopar: {} }
+  }
+
+  // Organizar por meal_type y choice
+  const stats = {
+    dinar: {} as Record<string, { count: number; users: string[] }>,
+    sopar: {} as Record<string, { count: number; users: string[] }>
+  }
+
+  data?.forEach((vote: { choice: string; meal_type: string; users: { name: string } | null }) => {
+    const mealType = vote.meal_type as 'dinar' | 'sopar'
+    const choice = vote.choice
+    const userName = vote.users?.name || 'Usuario desconocido'
+
+    if (!stats[mealType][choice]) {
+      stats[mealType][choice] = { count: 0, users: [] }
+    }
+    
+    stats[mealType][choice].count++
+    stats[mealType][choice].users.push(userName)
+  })
+
+  return stats
+}
+
 export async function getUserVoteForDate(userId: string, date: string, mealType: 'dinar' | 'sopar') {
   const { data, error } = await supabase
     .from('votes')
