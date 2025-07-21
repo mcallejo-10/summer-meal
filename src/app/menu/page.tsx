@@ -1,54 +1,43 @@
 'use client'
 
-import { useState } from 'react'
-import { Calendar, ChefHat, Clock } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Calendar, ChefHat } from 'lucide-react'
+import { getMenus, type Menu } from '@/lib/supabase'
 
-// Datos temporales del menú
-const mockMenus = [
-  {
-    id: '1',
-    date: '2025-07-03',
-    meals: [
-      { id: '1', name: 'Paella Valenciana', description: 'Paella tradicional con pollo y verduras', meal_type: 'omnivora' as const },
-      { id: '2', name: 'Ensalada Buddha Bowl', description: 'Bowl con quinoa, aguacate y verduras', meal_type: 'vegetariana' as const },
-      { id: '3', name: 'Curry de Garbanzos', description: 'Curry vegano con leche de coco', meal_type: 'vegana' as const },
-    ]
-  },
-  {
-    id: '2',
-    date: '2025-07-04',
-    meals: [
-      { id: '4', name: 'Pollo al curry', description: 'Pollo tierno con salsa de curry suave', meal_type: 'omnivora' as const },
-      { id: '5', name: 'Lasaña de verduras', description: 'Lasaña con berenjena, calabacín y queso', meal_type: 'vegetariana' as const },
-      { id: '6', name: 'Bowl de Tofu', description: 'Tofu marinado con verduras salteadas', meal_type: 'vegana' as const },
-    ]
-  },
-  {
-    id: '3',
-    date: '2025-07-05',
-    meals: [
-      { id: '7', name: 'Pescado al horno', description: 'Pescado fresco con patatas y hierbas', meal_type: 'omnivora' as const },
-      { id: '8', name: 'Risotto de setas', description: 'Risotto cremoso con setas de temporada', meal_type: 'vegetariana' as const },
-      { id: '9', name: 'Lentejas especiadas', description: 'Lentejas con especias del mediterráneo', meal_type: 'vegana' as const },
-    ]
-  }
-]
+// Ordre dels dies de la setmana
+const DAYS_ORDER = ['dilluns', 'dimarts', 'dimecres', 'dijous', 'divendres', 'dissabte', 'diumenge']
+
+const DAYS_LABELS = {
+  'dilluns': 'Dilluns',
+  'dimarts': 'Dimarts', 
+  'dimecres': 'Dimecres',
+  'dijous': 'Dijous',
+  'divendres': 'Divendres',
+  'dissabte': 'Dissabte',
+  'diumenge': 'Diumenge'
+}
 
 export default function MenuPage() {
-  const [selectedWeek, setSelectedWeek] = useState('current')
+  const [menus, setMenus] = useState<Menu[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('es-ES', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    })
+  useEffect(() => {
+    loadMenus()
+  }, [])
+
+  const loadMenus = async () => {
+    try {
+      const menuData = await getMenus()
+      setMenus(menuData || [])
+    } catch (error) {
+      console.error('Error carregant menús:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const getMealTypeColor = (mealType: string) => {
-    switch (mealType) {
+  const getDietTypeColor = (dietType: string) => {
+    switch (dietType) {
       case 'omnivora':
         return 'bg-red-500'
       case 'vegetariana':
@@ -60,97 +49,142 @@ export default function MenuPage() {
     }
   }
 
+  // Organitzar menús per dia i tipus de menjar
+  const organizeMenusByDay = () => {
+    const organized: Record<string, { dinar: Menu[], sopar: Menu[] }> = {}
+    
+    DAYS_ORDER.forEach(day => {
+      organized[day] = { dinar: [], sopar: [] }
+    })
+
+    menus.forEach(menu => {
+      if (organized[menu.day]) {
+        organized[menu.day][menu.meal_type].push(menu)
+      }
+    })
+
+    return organized
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregant menús...</p>
+        </div>
+      </div>
+    )
+  }
+
+  const organizedMenus = organizeMenusByDay()
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-4 flex items-center justify-center gap-3">
             <Calendar className="text-blue-500" size={36} />
-            Menú Semanal
+            Menú Setmanal
           </h1>
           <p className="text-gray-600 text-lg">
-            Consulta los platos disponibles para los próximos días
+            El mateix menú es repeteix cada setmana
           </p>
         </div>
 
-        <div className="mb-6">
-          <div className="flex justify-center">
-            <div className="bg-white rounded-lg p-2 shadow-md">
-              <button
-                onClick={() => setSelectedWeek('current')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                  selectedWeek === 'current'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Esta semana
-              </button>
-              <button
-                onClick={() => setSelectedWeek('next')}
-                className={`px-4 py-2 rounded-md font-medium transition-colors ${
-                  selectedWeek === 'next'
-                    ? 'bg-blue-500 text-white'
-                    : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Próxima semana
-              </button>
-            </div>
-          </div>
-        </div>
-
         <div className="grid gap-6">
-          {mockMenus.map((dayMenu) => (
-            <div key={dayMenu.id} className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex items-center gap-3 mb-6">
-                <Clock className="text-orange-500" size={24} />
-                <h2 className="text-xl font-bold text-gray-800">
-                  {formatDate(dayMenu.date)}
-                </h2>
-              </div>
+          {DAYS_ORDER.map((day) => {
+            const dayMenus = organizedMenus[day]
+            const hasMenus = dayMenus.dinar.length > 0 || dayMenus.sopar.length > 0
 
-              <div className="grid md:grid-cols-3 gap-4">
-                {dayMenu.meals.map((meal) => (
-                  <div
-                    key={meal.id}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <h3 className="font-semibold text-gray-800 text-lg">
-                        {meal.name}
-                      </h3>
-                      <span
-                        className={`inline-block px-2 py-1 rounded-full text-xs text-white ${getMealTypeColor(
-                          meal.meal_type
-                        )}`}
-                      >
-                        {meal.meal_type.charAt(0).toUpperCase() + meal.meal_type.slice(1)}
-                      </span>
-                    </div>
-                    <p className="text-gray-600 text-sm">
-                      {meal.description}
-                    </p>
-                    <div className="mt-3 flex items-center gap-2">
-                      <ChefHat size={16} className="text-gray-400" />
-                      <span className="text-xs text-gray-500">
-                        Preparado fresh del día
-                      </span>
+            if (!hasMenus) return null
+
+            return (
+              <div key={day} className="bg-white rounded-lg shadow-lg p-6">
+                <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                  <ChefHat className="text-orange-500" size={24} />
+                  {DAYS_LABELS[day as keyof typeof DAYS_LABELS]}
+                </h2>
+
+                {/* Dinar */}
+                {dayMenus.dinar.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-lg font-semibold text-orange-600 mb-3 flex items-center gap-2">
+                      🍽️ Dinar
+                    </h3>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {dayMenus.dinar.map((menu) => (
+                        <div
+                          key={menu.id}
+                          className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="font-semibold text-gray-800 text-sm">
+                              {menu.dish_name}
+                            </h4>
+                            <span
+                              className={`inline-block px-2 py-1 rounded-full text-xs text-white ${getDietTypeColor(
+                                menu.diet_type
+                              )}`}
+                            >
+                              {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                ))}
+                )}
+
+                {/* Sopar */}
+                {dayMenus.sopar.length > 0 && (
+                  <div>
+                    <h3 className="text-lg font-semibold text-purple-600 mb-3 flex items-center gap-2">
+                      🌙 Sopar
+                    </h3>
+                    <div className="grid md:grid-cols-3 gap-4">
+                      {dayMenus.sopar.map((menu) => (
+                        <div
+                          key={menu.id}
+                          className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <h4 className="font-semibold text-gray-800 text-sm">
+                              {menu.dish_name}
+                            </h4>
+                            <span
+                              className={`inline-block px-2 py-1 rounded-full text-xs text-white ${getDietTypeColor(
+                                menu.diet_type
+                              )}`}
+                            >
+                              {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
 
+        {menus.length === 0 && !loading && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 text-lg">No hi ha menús configurats encara.</p>
+            <p className="text-gray-400 text-sm mt-2">Contacta amb l&apos;administrador per afegir menús.</p>
+          </div>
+        )}
+
         <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-          <h3 className="font-semibold text-blue-800 mb-2">ℹ️ Información importante</h3>
+          <h3 className="font-semibold text-blue-800 mb-2">ℹ️ Informació important</h3>
           <ul className="text-blue-700 text-sm space-y-1">
-            <li>• Los menús pueden cambiar según disponibilidad de ingredientes</li>
-            <li>• Las votaciones cierran a las 15:00 del día anterior</li>
-            <li>• Para alergias o intolerancias, contacta con el administrador</li>
-            <li>• Los platos veganos están libres de productos de origen animal</li>
+            <li>• Aquest menú es repeteix cada setmana</li>
+            <li>• Les votacions tanquen a les 15:00 del dia anterior</li>
+            <li>• Per al·lèrgies o intoleràncies, contacta amb l&apos;administrador</li>
+            <li>• Els plats vegans estan lliures de productes d&apos;origen animal</li>
+            <li>• Sempre pots triar &quot;Porto el meu menjar&quot; o &quot;No vindré&quot;</li>
           </ul>
         </div>
       </div>

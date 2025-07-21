@@ -1,14 +1,17 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { User, Calendar, ChefHat } from 'lucide-react'
+import { User, Calendar, ChefHat, Settings } from 'lucide-react'
+import Link from 'next/link'
 import { 
   getUsers, 
+  getMenus,
   createVote, 
   getUserVoteForDate, 
   updateVote,
   type User as UserType,
-  type Vote 
+  type Vote,
+  type Menu
 } from '@/lib/supabase'
 
 const voteOptions = [
@@ -21,6 +24,7 @@ const voteOptions = [
 
 export default function Home() {
   const [users, setUsers] = useState<UserType[]>([])
+  const [menus, setMenus] = useState<Menu[]>([])
   const [selectedUser, setSelectedUser] = useState<string | null>(null)
   const [selectedMealType, setSelectedMealType] = useState<'dinar' | 'sopar'>('dinar')
   const [selectedVote, setSelectedVote] = useState<string>('')
@@ -40,8 +44,12 @@ export default function Home() {
   })
   const tomorrowDateString = tomorrow.toISOString().split('T')[0]
 
+  // Obtenir el dia de demà en català per mostrar el menú
+  const tomorrowInCatalan = tomorrow.toLocaleDateString('ca-ES', { weekday: 'long' }).toLowerCase()
+
   useEffect(() => {
     loadUsers()
+    loadMenus()
   }, [])
 
   const loadUsers = async () => {
@@ -52,6 +60,15 @@ export default function Home() {
       console.error('Error carregant usuaris:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadMenus = async () => {
+    try {
+      const menusData = await getMenus()
+      setMenus(menusData)
+    } catch (error) {
+      console.error('Error carregant menús:', error)
     }
   }
 
@@ -94,27 +111,50 @@ export default function Home() {
     try {
       if (existingVote) {
         // Actualitzar vot existent
-        await updateVote(existingVote.id, {
+        const updateData = {
           choice: selectedVote as 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré',
           updated_at: new Date().toISOString()
-        })
+        }
+        
+        await updateVote(existingVote.id, updateData)
       } else {
         // Crear nou vot
-        await createVote({
+        const voteData = {
           user_id: selectedUser,
           date: tomorrowDateString,
           choice: selectedVote as 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré',
           meal_type: selectedMealType
-        })
+        }
+        
+        await createVote(voteData)
       }
       
       setIsVoteSubmitted(true)
-      console.log('Vot enviat correctament!')
     } catch (error) {
       console.error('Error enviant vot:', error)
       alert('Error enviant el vot. Torna-ho a provar.')
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  // Funcions per obtenir menús del dia següent (demà)
+  const getTomorrowsMenus = (mealType: 'dinar' | 'sopar') => {
+    return menus.filter(menu => 
+      menu.day === tomorrowInCatalan && menu.meal_type === mealType
+    )
+  }
+
+  const getDietTypeColor = (dietType: string) => {
+    switch (dietType) {
+      case 'omnivora':
+        return 'bg-red-500'
+      case 'vegetariana':
+        return 'bg-green-500'
+      case 'vegana':
+        return 'bg-emerald-500'
+      default:
+        return 'bg-gray-500'
     }
   }
 
@@ -141,6 +181,17 @@ export default function Home() {
             <p className="text-gray-600 text-lg">
               Selecciona el teu nom per votar el menjar de demà
             </p>
+          </div>
+
+          {/* Enlace a login para administradores */}
+          <div className="text-center mb-6">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium text-sm"
+            >
+              <Settings size={16} />
+              Accés d&apos;Administrador
+            </Link>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
@@ -218,6 +269,40 @@ export default function Home() {
                 🌙 Sopar
               </button>
             </div>
+          </div>
+
+          {/* Menú de demà */}
+          <div className="mb-8 bg-gray-50 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">
+              📋 Opcions de {selectedMealType === 'dinar' ? 'dinar' : 'sopar'} per demà:
+            </h3>
+            {getTomorrowsMenus(selectedMealType).length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {getTomorrowsMenus(selectedMealType).map((menu) => (
+                  <div
+                    key={menu.id}
+                    className="bg-white rounded-lg p-3 shadow-sm border border-gray-200"
+                  >
+                    <div className="flex items-start justify-between">
+                      <h4 className="font-medium text-gray-800 text-sm">
+                        {menu.dish_name}
+                      </h4>
+                      <span
+                        className={`inline-block px-2 py-1 rounded-full text-xs text-white ${getDietTypeColor(
+                          menu.diet_type
+                        )}`}
+                      >
+                        {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-600 text-sm">
+                No hi ha opcions de {selectedMealType === 'dinar' ? 'dinar' : 'sopar'} configurades per demà.
+              </p>
+            )}
           </div>
 
           {!isVoteSubmitted ? (

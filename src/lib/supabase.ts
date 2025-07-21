@@ -1,9 +1,8 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase-auth'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// Usar la instancia única para evitar múltiples clientes
+export const supabase = createClient()
+export const supabaseAuth = createClient()
 
 // Tipus per a les nostres taules de base de dades
 export interface User {
@@ -15,7 +14,8 @@ export interface User {
 
 export interface Menu {
   id: string
-  diet_type: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'
+  dish_name: string
+  diet_type: 'omnivora' | 'vegetariana' | 'vegana'
   meal_type: 'dinar' | 'sopar'
   day: 'dilluns' | 'dimarts' | 'dimecres' | 'dijous' | 'divendres' | 'dissabte' | 'diumenge'
   created_at: string
@@ -24,9 +24,8 @@ export interface Menu {
 export interface Vote {
   id: string
   user_id: string
-  menu_id?: string
   date: string
-  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'
+  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'  
   meal_type: 'dinar' | 'sopar'
   created_at: string
   updated_at: string
@@ -84,11 +83,63 @@ export async function getMenus() {
   return data || []
 }
 
+export async function createMenu(menu: Omit<Menu, 'id' | 'created_at'>) {
+  const menuWithTimestamp = {
+    ...menu,
+    created_at: new Date().toISOString()
+  }
+  
+  const { data, error } = await supabaseAuth
+    .from('menus')
+    .insert([menuWithTimestamp])
+    .select()
+  
+  if (error) {
+    console.error('Error creant menú:', error)
+    throw error
+  }
+  return data?.[0]
+}
+
+export async function updateMenu(menuId: string, updates: Partial<Menu>) {
+  const { data, error } = await supabaseAuth
+    .from('menus')
+    .update(updates)
+    .eq('id', menuId)
+    .select()
+  
+  if (error) {
+    console.error('Error actualitzant menú:', error)
+    throw error
+  }
+  
+  return data?.[0]
+}
+
+export async function deleteMenu(menuId: string) {
+  const { error } = await supabaseAuth
+    .from('menus')
+    .delete()
+    .eq('id', menuId)
+  
+  if (error) {
+    console.error('Error eliminant menú:', error)
+    throw error
+  }
+}
+
 // Funcions per treballar amb vots
 export async function createVote(vote: Omit<Vote, 'id' | 'created_at' | 'updated_at'>) {
+  const now = new Date().toISOString()
+  const voteWithTimestamps = {
+    ...vote,
+    created_at: now,
+    updated_at: now
+  }
+  
   const { data, error } = await supabase
     .from('votes')
-    .insert([vote])
+    .insert([voteWithTimestamps])
     .select()
   
   if (error) {
@@ -130,9 +181,14 @@ export async function getUserVoteForDate(userId: string, date: string, mealType:
 }
 
 export async function updateVote(voteId: string, updates: Partial<Vote>) {
+  const updatesWithTimestamp = {
+    ...updates,
+    updated_at: new Date().toISOString()
+  }
+  
   const { data, error } = await supabase
     .from('votes')
-    .update(updates)
+    .update(updatesWithTimestamp)
     .eq('id', voteId)
     .select()
   
