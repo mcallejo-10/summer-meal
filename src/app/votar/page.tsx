@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { User, Calendar, ArrowLeft, CheckCircle } from "lucide-react";
+import { Calendar, ArrowLeft, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   getUsers,
   getMenus,
@@ -167,6 +168,22 @@ export default function VotarPage() {
     );
   };
 
+  // Función para normalizar nombres y generar URL de avatar
+  const normalizeUserName = (name: string) => {
+    return name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "") // Quitar acentos
+      .replace(/[^a-z0-9\s]/g, "") // Quitar caracteres especiales
+      .replace(/\s+/g, "-") // Espacios por guiones
+      .trim();
+  };
+
+  const getUserAvatarUrl = (user: UserType) => {
+    const normalizedName = normalizeUserName(user.name);
+    return `/avatars/${normalizedName}.jpeg`;
+  };
+
   const getDietTypeColor = (dietType: string) => {
     switch (dietType) {
       case "omnivora":
@@ -234,7 +251,21 @@ export default function VotarPage() {
                     className="p-4 bg-gray-50 rounded-lg border-2 border-transparent hover:border-blue-300 hover:bg-blue-50 transition-all focus:border-blue-500 focus:outline-none"
                   >
                     <div className="flex flex-col items-center">
-                      <User className="text-blue-500 mb-2" size={24} />
+                      {/* Avatar con fallback */}
+                      <div className="relative w-16 h-16 mb-3">
+                        <Image
+                          src={getUserAvatarUrl(user)}
+                          alt={`Avatar de ${user.name}`}
+                          width={64}
+                          height={64}
+                          className="w-full h-full rounded-full object-cover border-2 border-gray-200"
+                          onError={(e) => {
+                            // Fallback a imagen por defecto
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/avatars/default.jpeg';
+                          }}
+                        />
+                      </div>
                       <span className="text-sm font-medium text-gray-800 text-center">
                         {user.name}
                       </span>

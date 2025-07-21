@@ -124,35 +124,35 @@ export default function Home() {
           </div>
           
           {/* Instrucciones de uso */}
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-lg p-8 text-white">
-            <h2 className="text-2xl font-bold mb-6 text-center">
+          <div className="bg-gradient-to-t from-orange-100 to-teal-100 border border-yellow-200 rounded-2xl shadow-lg p-8">
+            <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
               🚀 Com funciona?
             </h2>
             <div className="grid gap-6 md:grid-cols-3">
               <div className="text-center">
-                <div className="bg-white bg-opacity-20 rounded-full p-3 w-16 h-16 mx-auto mb-4">
-                  <span className="text-2xl">1️⃣</span>
+                <div className="bg-orange-100 border border-orange-200 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-orange-600">1</span>
                 </div>
-                <h3 className="font-bold mb-2">Consulta els menús</h3>
-                <p className="text-blue-100">
+                <h3 className="font-bold mb-2 text-gray-800">Consulta els menús</h3>
+                <p className="text-gray-600">
                   Veu què hi ha per menjar cada dia
                 </p>
               </div>
               <div className="text-center">
-                <div className="bg-white bg-opacity-20 rounded-full p-3 w-16 h-16 mx-auto mb-4">
-                  <span className="text-2xl">2️⃣</span>
+                <div className="bg-blue-100 border border-blue-200 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-blue-600">2</span>
                 </div>
-                <h3 className="font-bold mb-2">Vota la teva preferència</h3>
-                <p className="text-blue-100">
+                <h3 className="font-bold mb-2 text-gray-800">Vota la teva preferència</h3>
+                <p className="text-gray-600">
                   Tria què vols menjar demà
                 </p>
               </div>
               <div className="text-center">
-                <div className="bg-white bg-opacity-20 rounded-full p-3 w-16 h-16 mx-auto mb-4">
-                  <span className="text-2xl">3️⃣</span>
+                <div className="bg-green-100 border border-green-200 rounded-full p-3 w-16 h-16 mx-auto mb-4 flex items-center justify-center">
+                  <span className="text-2xl font-bold text-green-600">3</span>
                 </div>
-                <h3 className="font-bold mb-2">Organitza les taules</h3>
-                <p className="text-blue-100">
+                <h3 className="font-bold mb-2 text-gray-800">Organitza les taules</h3>
+                <p className="text-gray-600">
                   Usa els resultats per saber quants vindran
                 </p>
               </div>

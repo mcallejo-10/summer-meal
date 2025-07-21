@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChefHat, ArrowLeft, Calendar } from 'lucide-react'
+import { ChefHat, ArrowLeft, Calendar, FileImage } from 'lucide-react'
 import Link from 'next/link'
 import { getMenus, type Menu } from '@/lib/supabase'
 
@@ -76,44 +76,62 @@ export default function MenusPage() {
         <div className="max-w-6xl mx-auto">
           {/* Header */}
           <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <ChefHat className="text-orange-500" size={32} />
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-800">
-                    Menús de la Setmana
-                  </h1>
-                  <p className="text-gray-600">
-                    Descobreix què tenim preparat cada dia
-                  </p>
+            <div className="flex flex-col gap-4 mb-4">
+              {/* Título y descripción */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <ChefHat className="text-orange-500" size={32} />
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">
+                      Menús de la Setmana
+                    </h1>
+                    <p className="text-gray-600 text-sm sm:text-base">
+                      Descobreix què tenim preparat cada dia
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Botones de acción */}
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={() => window.open('/menu-personal-2025.jpeg', '_blank')}
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium"
+                  >
+                    <FileImage size={18} />
+                    <span className="text-sm sm:text-base">Veure Menú Complet</span>
+                  </button>
+                  <Link 
+                    href="/" 
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors font-medium"
+                  >
+                    <ArrowLeft size={18} />
+                    <span className="text-sm sm:text-base">Tornar</span>
+                  </Link>
                 </div>
               </div>
-              <Link 
-                href="/" 
-                className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
-              >
-                <ArrowLeft size={18} />
-                Tornar
-              </Link>
             </div>
 
             {/* Selector de día */}
-            <div className="flex items-center gap-4 flex-wrap">
-              <Calendar className="text-gray-500" size={20} />
-              <span className="font-medium text-gray-700">Dia:</span>
-              {daysOfWeek.map((day) => (
-                <button
-                  key={day.value}
-                  onClick={() => setSelectedDay(day.value)}
-                  className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
-                    selectedDay === day.value
-                      ? 'bg-orange-500 text-white'
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                  }`}
-                >
-                  {day.label}
-                </button>
-              ))}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              <div className="flex items-center gap-2">
+                <Calendar className="text-gray-500" size={20} />
+                <span className="font-medium text-gray-700">Dia:</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {daysOfWeek.map((day) => (
+                  <button
+                    key={day.value}
+                    onClick={() => setSelectedDay(day.value)}
+                    className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
+                      selectedDay === day.value
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                  >
+                    {day.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
