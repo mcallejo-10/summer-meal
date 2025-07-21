@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut } from 'lucide-react'
+import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-auth'
 import type { Session, User } from '@supabase/supabase-js'
@@ -216,6 +216,75 @@ export default function AdminPage() {
       console.error('Error eliminant menú:', error)
       alert('Error eliminant el menú. Torna-ho a provar.')
     }
+  }
+
+  // Generar resumen para compartir con el restaurante
+  const generateSummary = () => {
+    if (!voteStats) return ''
+    
+    const formatDate = new Date(selectedDate).toLocaleDateString('ca-ES', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long'
+    })
+    
+    let summary = `📋 Resum per ${formatDate}\n\n`
+    
+    Object.entries(voteStats).forEach(([mealType, choices]) => {
+      if (Object.keys(choices).length === 0) return
+      
+      const mealName = mealType === 'dinar' ? 'Dinar' : 'Sopar'
+      const mealEmoji = mealType === 'dinar' ? '☀️' : '🌙'
+      
+      summary += `${mealEmoji} ${mealName}: `
+      
+      const counts = {
+        omnivora: 0,
+        vegetariana: 0,
+        vegana: 0
+      }
+      
+      Object.entries(choices).forEach(([choice, data]) => {
+        if (choice in counts) {
+          counts[choice as keyof typeof counts] = data.count
+        }
+      })
+      
+      const parts = []
+      if (counts.omnivora > 0) parts.push(`${counts.omnivora} omnívors`)
+      if (counts.vegetariana > 0) parts.push(`${counts.vegetariana} vegetarians`)
+      if (counts.vegana > 0) parts.push(`${counts.vegana} vegans`)
+      
+      if (parts.length > 0) {
+        summary += parts.join(', ')
+      } else {
+        summary += 'Cap vot registrat'
+      }
+      
+      summary += '\n'
+    })
+    
+    return summary.trim()
+  }
+
+  // Copiar resumen al portapapeles
+  const copyToClipboard = async () => {
+    const summary = generateSummary()
+    try {
+      await navigator.clipboard.writeText(summary)
+      alert('Resumen copiado al portapapeles!')
+    } catch (error) {
+      console.error('Error copiando al portapapeles:', error)
+      alert('Error copiando al portapapeles')
+    }
+  }
+
+  // Compartir por WhatsApp
+  const shareWhatsApp = () => {
+    const summary = generateSummary()
+    const encodedText = encodeURIComponent(summary)
+    const whatsappUrl = `https://wa.me/?text=${encodedText}`
+    window.open(whatsappUrl, '_blank')
   }
 
   return (
@@ -508,12 +577,42 @@ export default function AdminPage() {
               </div>
             ) : voteStats && Object.keys(voteStats).length > 0 ? (
               <div className="space-y-8">
+                {/* Resumen para compartir */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="font-semibold text-blue-800 flex items-center gap-2">
+                      <Share2 size={18} />
+                      Resum dels vots per restaurant
+                    </h4>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={copyToClipboard}
+                        className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
+                      >
+                        <Copy size={14} />
+                        Copiar
+                      </button>
+                      <button
+                        onClick={shareWhatsApp}
+                        className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
+                      >
+                        <Share2 size={14} />
+                        WhatsApp
+                      </button>
+                    </div>
+                  </div>
+                  <div className="bg-white rounded p-3 text-sm text-gray-700 font-mono whitespace-pre-line border">
+                    {generateSummary()}
+                  </div>
+                </div>
+
+                {/* Estadísticas detalladas */}
                 {Object.entries(voteStats).map(([mealType, choices]) => (
                   <div key={mealType} className="border rounded-lg p-6">
                     <h3 className={`text-xl font-bold mb-4 capitalize ${
                       mealType === 'dinar' ? 'text-yellow-600' : 'text-[#2a747f]'
                     }`}>
-                      {mealType === 'dinar' ? '🌞 Dinar' : '🌙 Sopar'}
+                      {mealType === 'dinar' ? '☀️ Dinar' : '🌙 Sopar'}
                     </h3>
                     
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
