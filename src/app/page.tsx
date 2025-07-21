@@ -58,26 +58,7 @@ export default function Home() {
 
           {/* Navegación principal con 3 opciones */}
           <div className="grid gap-6 md:grid-cols-3 mb-12">
-            {/* Ver Menús */}
-            <Link 
-              href="/menus"
-              className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-            >
-              <div className="p-8 text-center">
-                <div className="bg-orange-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 group-hover:bg-orange-200 transition-colors">
-                  <Utensils className="text-orange-500 w-full h-full" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-3">
-                  Ver Menús
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  Descobreix què tenim preparat cada dia de la setmana
-                </p>
-                <div className="bg-orange-50 rounded-lg p-3 text-sm text-orange-700">
-                  📋 Consulta tots els plats disponibles
-                </div>
-              </div>
-            </Link>
+
 
             {/* Votar */}
             <Link 
@@ -110,50 +91,38 @@ export default function Home() {
                   <BarChart3 className="text-blue-500 w-full h-full" />
                 </div>
                 <h3 className="text-2xl font-bold text-gray-800 mb-3">
-                  Ver Resultats
+                  Veure Resultats
                 </h3>
                 <p className="text-gray-600 mb-4">
                   Consulta els resultats per organitzar les taules
                 </p>
                 <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
-                  📊 Veu qui ve i què necessiteu
+                  📊 Qui ve i què necessiteu
+                </div>
+              </div>
+            </Link>
+            {/* Ver Menús */}
+            <Link 
+              href="/menus"
+              className="group bg-white rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+            >
+              <div className="p-8 text-center">
+                <div className="bg-orange-100 rounded-full p-4 w-20 h-20 mx-auto mb-4 group-hover:bg-orange-200 transition-colors">
+                  <Utensils className="text-orange-500 w-full h-full" />
+                </div>
+                <h3 className="text-2xl font-bold text-gray-800 mb-3">
+                  Menú
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  Descobreix què tenim preparat cada dia de la setmana
+                </p>
+                <div className="bg-orange-50 rounded-lg p-3 text-sm text-orange-700">
+                  📋 Consulta tots els plats disponibles
                 </div>
               </div>
             </Link>
           </div>
-
-          {/* Información del grupo */}
-          <div className="bg-white rounded-2xl shadow-lg p-8 mb-8">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6 text-center">
-              📈 Informació del Grup
-            </h2>
-            <div className="grid gap-6 md:grid-cols-3">
-              <div className="text-center">
-                <div className="bg-purple-100 rounded-full p-3 w-16 h-16 mx-auto mb-3">
-                  <Users className="text-purple-500 w-full h-full" />
-                </div>
-                <div className="text-3xl font-bold text-gray-800">
-                  {loading ? '...' : totalUsers}
-                </div>
-                <div className="text-gray-600">Persones registrades</div>
-              </div>
-              <div className="text-center">
-                <div className="bg-yellow-100 rounded-full p-3 w-16 h-16 mx-auto mb-3">
-                  <Calendar className="text-yellow-500 w-full h-full" />
-                </div>
-                <div className="text-3xl font-bold text-gray-800">7</div>
-                <div className="text-gray-600">Dies de la setmana</div>
-              </div>
-              <div className="text-center">
-                <div className="bg-green-100 rounded-full p-3 w-16 h-16 mx-auto mb-3">
-                  <ChefHat className="text-green-500 w-full h-full" />
-                </div>
-                <div className="text-3xl font-bold text-gray-800">2</div>
-                <div className="text-gray-600">Menjars per dia</div>
-              </div>
-            </div>
-          </div>
-
+          
           {/* Instrucciones de uso */}
           <div className="bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl shadow-lg p-8 text-white">
             <h2 className="text-2xl font-bold mb-6 text-center">

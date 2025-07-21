@@ -1,162 +1,184 @@
-'use client'
+"use client";
 
-import { useState, useEffect, useCallback } from 'react'
-import { User, Calendar, ArrowLeft, CheckCircle } from 'lucide-react'
-import Link from 'next/link'
-import { 
-  getUsers, 
+import { useState, useEffect, useCallback } from "react";
+import { User, Calendar, ArrowLeft, CheckCircle } from "lucide-react";
+import Link from "next/link";
+import {
+  getUsers,
   getMenus,
-  createVote, 
-  getUserVoteForDate, 
+  createVote,
+  getUserVoteForDate,
   updateVote,
   type User as UserType,
   type Vote,
-  type Menu
-} from '@/lib/supabase'
+  type Menu,
+} from "@/lib/supabase";
 
 const voteOptions = [
-  { value: 'omnivora', label: '🥩 Omnívora', color: 'bg-red-500' },
-  { value: 'vegetariana', label: '🥗 Vegetariana', color: 'bg-green-500' },
-  { value: 'vegana', label: '🌱 Vegana', color: 'bg-emerald-500' },
-  { value: 'porto_el_meu_menjar', label: '🥪 Porto el meu menjar', color: 'bg-blue-500' },
-  { value: 'no_vindré', label: '❌ No vindré', color: 'bg-gray-500' },
-] as const
+  { value: "omnivora", label: "🥩 Omnívora", color: "bg-red-500" },
+  { value: "vegetariana", label: "🥗 Vegetariana", color: "bg-green-500" },
+  { value: "vegana", label: "🌱 Vegana", color: "bg-emerald-500" },
+  {
+    value: "porto_el_meu_menjar",
+    label: "🥪 Porto el meu menjar",
+    color: "bg-blue-500",
+  },
+  { value: "no_vindré", label: "❌ No vindré", color: "bg-gray-500" },
+] as const;
 
 export default function VotarPage() {
-  const [users, setUsers] = useState<UserType[]>([])
-  const [menus, setMenus] = useState<Menu[]>([])
-  const [selectedUser, setSelectedUser] = useState<string | null>(null)
-  const [selectedMealType, setSelectedMealType] = useState<'dinar' | 'sopar'>('dinar')
-  const [selectedVote, setSelectedVote] = useState<string>('')
-  const [isVoteSubmitted, setIsVoteSubmitted] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [submitting, setSubmitting] = useState(false)
-  const [existingVote, setExistingVote] = useState<Vote | null>(null)
+  const [users, setUsers] = useState<UserType[]>([]);
+  const [menus, setMenus] = useState<Menu[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
+  const [selectedMealType, setSelectedMealType] = useState<"dinar" | "sopar">(
+    "dinar"
+  );
+  const [selectedVote, setSelectedVote] = useState<string>("");
+  const [isVoteSubmitted, setIsVoteSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [existingVote, setExistingVote] = useState<Vote | null>(null);
 
   // Obtenir la data de demà
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowFormatted = tomorrow.toLocaleDateString('ca-ES', {
-    weekday: 'long',
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
-  const tomorrowDateString = tomorrow.toISOString().split('T')[0]
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowFormatted = tomorrow.toLocaleDateString("ca-ES", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+  const tomorrowDateString = tomorrow.toISOString().split("T")[0];
 
   // Obtenir el dia de demà en català per mostrar el menú
-  const tomorrowInCatalan = tomorrow.toLocaleDateString('ca-ES', { weekday: 'long' }).toLowerCase()
+  const tomorrowInCatalan = tomorrow
+    .toLocaleDateString("ca-ES", { weekday: "long" })
+    .toLowerCase();
 
   useEffect(() => {
-    loadUsers()
-    loadMenus()
-  }, [])
+    loadUsers();
+    loadMenus();
+  }, []);
 
   const loadUsers = async () => {
     try {
-      const usersData = await getUsers()
-      setUsers(usersData)
+      const usersData = await getUsers();
+      setUsers(usersData);
     } catch (error) {
-      console.error('Error carregant usuaris:', error)
+      console.error("Error carregant usuaris:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadMenus = async () => {
     try {
-      const menusData = await getMenus()
-      setMenus(menusData)
+      const menusData = await getMenus();
+      setMenus(menusData);
     } catch (error) {
-      console.error('Error carregant menús:', error)
+      console.error("Error carregant menús:", error);
     }
-  }
+  };
 
   const checkExistingVote = useCallback(async () => {
-    if (!selectedUser) return
-    
+    if (!selectedUser) return;
+
     try {
-      const vote = await getUserVoteForDate(selectedUser, tomorrowDateString, selectedMealType)
+      const vote = await getUserVoteForDate(
+        selectedUser,
+        tomorrowDateString,
+        selectedMealType
+      );
       if (vote) {
-        setExistingVote(vote)
-        setSelectedVote(vote.choice)
-        setIsVoteSubmitted(true)
+        setExistingVote(vote);
+        setSelectedVote(vote.choice);
+        setIsVoteSubmitted(true);
       } else {
-        setExistingVote(null)
-        setSelectedVote('')
-        setIsVoteSubmitted(false)
+        setExistingVote(null);
+        setSelectedVote("");
+        setIsVoteSubmitted(false);
       }
     } catch (error) {
-      console.error('Error comprovant vot existent:', error)
+      console.error("Error comprovant vot existent:", error);
     }
-  }, [selectedUser, tomorrowDateString, selectedMealType])
+  }, [selectedUser, tomorrowDateString, selectedMealType]);
 
   useEffect(() => {
     if (selectedUser) {
-      checkExistingVote()
+      checkExistingVote();
     }
-  }, [selectedUser, selectedMealType, checkExistingVote])
+  }, [selectedUser, selectedMealType, checkExistingVote]);
 
   const handleUserSelect = (userId: string) => {
-    setSelectedUser(userId)
-    setSelectedVote('')
-    setIsVoteSubmitted(false)
-    setExistingVote(null)
-  }
+    setSelectedUser(userId);
+    setSelectedVote("");
+    setIsVoteSubmitted(false);
+    setExistingVote(null);
+  };
 
   const handleVoteSubmit = async () => {
-    if (!selectedVote || !selectedUser || submitting) return
-    
-    setSubmitting(true)
+    if (!selectedVote || !selectedUser || submitting) return;
+
+    setSubmitting(true);
     try {
       if (existingVote) {
         // Actualitzar vot existent
         const updateData = {
-          choice: selectedVote as 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré',
-          updated_at: new Date().toISOString()
-        }
-        
-        await updateVote(existingVote.id, updateData)
+          choice: selectedVote as
+            | "omnivora"
+            | "vegetariana"
+            | "vegana"
+            | "porto_el_meu_menjar"
+            | "no_vindré",
+          updated_at: new Date().toISOString(),
+        };
+
+        await updateVote(existingVote.id, updateData);
       } else {
         // Crear nou vot
         const voteData = {
           user_id: selectedUser,
           date: tomorrowDateString,
-          choice: selectedVote as 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré',
-          meal_type: selectedMealType
-        }
-        
-        await createVote(voteData)
+          choice: selectedVote as
+            | "omnivora"
+            | "vegetariana"
+            | "vegana"
+            | "porto_el_meu_menjar"
+            | "no_vindré",
+          meal_type: selectedMealType,
+        };
+
+        await createVote(voteData);
       }
-      
-      setIsVoteSubmitted(true)
+
+      setIsVoteSubmitted(true);
     } catch (error) {
-      console.error('Error enviant vot:', error)
-      alert('Error enviant el vot. Torna-ho a provar.')
+      console.error("Error enviant vot:", error);
+      alert("Error enviant el vot. Torna-ho a provar.");
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   // Funcions per obtenir menús del dia següent (demà)
-  const getTomorrowsMenus = (mealType: 'dinar' | 'sopar') => {
-    return menus.filter(menu => 
-      menu.day === tomorrowInCatalan && menu.meal_type === mealType
-    )
-  }
+  const getTomorrowsMenus = (mealType: "dinar" | "sopar") => {
+    return menus.filter(
+      (menu) => menu.day === tomorrowInCatalan && menu.meal_type === mealType
+    );
+  };
 
   const getDietTypeColor = (dietType: string) => {
     switch (dietType) {
-      case 'omnivora':
-        return 'bg-red-500'
-      case 'vegetariana':
-        return 'bg-green-500'
-      case 'vegana':
-        return 'bg-emerald-500'
+      case "omnivora":
+        return "bg-red-500";
+      case "vegetariana":
+        return "bg-green-500";
+      case "vegana":
+        return "bg-emerald-500";
       default:
-        return 'bg-gray-500'
+        return "bg-gray-500";
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -166,7 +188,7 @@ export default function VotarPage() {
           <p className="mt-4 text-gray-600">Carregant usuaris...</p>
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -188,8 +210,8 @@ export default function VotarPage() {
                   </p>
                 </div>
               </div>
-              <Link 
-                href="/" 
+              <Link
+                href="/"
                 className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
               >
                 <ArrowLeft size={18} />
@@ -217,7 +239,9 @@ export default function VotarPage() {
                         {user.name}
                       </span>
                       {user.is_admin && (
-                        <span className="text-xs text-orange-500 mt-1">Admin</span>
+                        <span className="text-xs text-orange-500 mt-1">
+                          Admin
+                        </span>
                       )}
                     </div>
                   </button>
@@ -231,7 +255,7 @@ export default function VotarPage() {
               <div className="bg-white rounded-lg shadow-lg p-6">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-2xl font-bold text-gray-800">
-                    Hola, {users.find(u => u.id === selectedUser)?.name}! 👋
+                    Hola, {users.find((u) => u.id === selectedUser)?.name}! 👋
                   </h2>
                   <button
                     onClick={() => setSelectedUser(null)}
@@ -248,23 +272,27 @@ export default function VotarPage() {
                   </h3>
                   <div className="flex gap-4">
                     <button
-                      onClick={() => setSelectedMealType('dinar')}
+                      onClick={() => setSelectedMealType("dinar")}
                       className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                        selectedMealType === 'dinar'
-                          ? 'bg-orange-500 text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        selectedMealType === "dinar"
+                          ? "bg-orange-500 text-white"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                       }`}
                     >
                       🍽️ Dinar
                     </button>
                     <button
-                      onClick={() => setSelectedMealType('sopar')}
+                      onClick={() => setSelectedMealType("sopar")}
                       className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                        selectedMealType === 'sopar'
-                          ? 'text-white'
-                          : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        selectedMealType === "sopar"
+                          ? "text-white"
+                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                       }`}
-                      style={selectedMealType === 'sopar' ? {backgroundColor: '#2a747f'} : {}}
+                      style={
+                        selectedMealType === "sopar"
+                          ? { backgroundColor: "#2a747f" }
+                          : {}
+                      }
                     >
                       🌙 Sopar
                     </button>
@@ -273,16 +301,25 @@ export default function VotarPage() {
               </div>
 
               {/* Menú de demà */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
+              <div className={`rounded-lg p-4 mb-6 ${
+                        selectedMealType === 'dinar' 
+                          ? 'bg-yellow-50 border border-yellow-200' 
+                          : 'bg-teal-50 border border-teal-200'
+                      }`}>
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  📋 Opcions de {selectedMealType === 'dinar' ? 'dinar' : 'sopar'} per demà:
+                  📋 Opcions de{" "}
+                  {selectedMealType === "dinar" ? "dinar" : "sopar"} per demà:
                 </h3>
                 {getTomorrowsMenus(selectedMealType).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
                     {getTomorrowsMenus(selectedMealType).map((menu) => (
                       <div
                         key={menu.id}
-                        className="bg-gray-50 rounded-lg p-4 border border-gray-200"
+                        className={`rounded-lg p-4 border ${
+                          selectedMealType === 'dinar'
+                            ? 'bg-yellow-100 border-yellow-200'
+                            : 'bg-teal-100 border-teal-200'
+                        }`}
                       >
                         <div className="flex items-start justify-between">
                           <h4 className="font-medium text-gray-800 text-sm">
@@ -293,7 +330,8 @@ export default function VotarPage() {
                               menu.diet_type
                             )}`}
                           >
-                            {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                            {menu.diet_type.charAt(0).toUpperCase() +
+                              menu.diet_type.slice(1)}
                           </span>
                         </div>
                       </div>
@@ -301,14 +339,17 @@ export default function VotarPage() {
                   </div>
                 ) : (
                   <p className="text-gray-600 text-sm mb-6">
-                    No hi ha opcions de {selectedMealType === 'dinar' ? 'dinar' : 'sopar'} configurades per demà.
+                    No hi ha opcions de{" "}
+                    {selectedMealType === "dinar" ? "dinar" : "sopar"}{" "}
+                    configurades per demà.
                   </p>
                 )}
 
                 {!isVoteSubmitted ? (
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                      Què vols {selectedMealType === 'dinar' ? 'dinar' : 'sopar'} demà?
+                      Què vols{" "}
+                      {selectedMealType === "dinar" ? "dinar" : "sopar"} demà?
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                       {voteOptions.map((option) => (
@@ -318,7 +359,9 @@ export default function VotarPage() {
                           className={`p-4 rounded-lg border-2 transition-all ${
                             selectedVote === option.value
                               ? `${option.color} text-white border-transparent`
-                              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                              : selectedMealType === 'dinar'
+                              ? "bg-yellow-100 text-gray-700 border-yellow-200 hover:border-yellow-300 hover:bg-yellow-200"
+                              : "bg-teal-100 text-gray-700 border-teal-200 hover:border-teal-300 hover:bg-teal-200"
                           }`}
                         >
                           <span className="font-medium">{option.label}</span>
@@ -331,21 +374,27 @@ export default function VotarPage() {
                       disabled={!selectedVote || submitting}
                       className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                     >
-                      {submitting ? 'Enviant...' : existingVote ? 'Actualitzar la meva elecció' : 'Confirmar la meva elecció'}
+                      {submitting
+                        ? "Enviant..."
+                        : existingVote
+                        ? "Actualitzar la meva elecció"
+                        : "Confirmar la meva elecció"}
                     </button>
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4">
                       <h3 className="font-semibold">
-                        {existingVote ? '¡Vot actualitzat correctament! ✅' : '¡Vot registrat correctament! ✅'}
+                        {existingVote
+                          ? "¡Vot actualitzat correctament! ✅"
+                          : "¡Vot registrat correctament! ✅"}
                       </h3>
                       <p>La teva elecció per demà ha estat guardada.</p>
                     </div>
                     <button
                       onClick={() => {
-                        setSelectedVote('')
-                        setIsVoteSubmitted(false)
+                        setSelectedVote("");
+                        setIsVoteSubmitted(false);
                       }}
                       className="text-blue-600 hover:text-blue-800 font-medium"
                     >
@@ -359,5 +408,5 @@ export default function VotarPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

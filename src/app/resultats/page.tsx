@@ -57,6 +57,32 @@ export default function ResultatsPage() {
     return Object.values(choices).reduce((sum, data) => sum + data.count, 0)
   }
 
+  // Función para generar resumen de votaciones para organizar mesas
+  const generateMealSummary = (choices: Record<string, { count: number; users: string[] }>) => {
+    const counts = {
+      totalCoberts: 0,
+      omnivors: 0,
+      vegetarians: 0,
+      vegans: 0
+    }
+
+    Object.entries(choices).forEach(([choice, data]) => {
+      if (choice !== 'no_vindré') {
+        counts.totalCoberts += data.count
+      }
+      
+      if (choice === 'omnivora') {
+        counts.omnivors += data.count
+      } else if (choice === 'vegetariana') {
+        counts.vegetarians += data.count
+      } else if (choice === 'vegana') {
+        counts.vegans += data.count
+      }
+    })
+
+    return counts
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
@@ -116,6 +142,8 @@ export default function ResultatsPage() {
                 {Object.entries(voteStats).map(([mealType, choices]) => {
                   if (Object.keys(choices).length === 0) return null
                   
+                  const summary = generateMealSummary(choices)
+                  
                   return (
                     <div key={mealType} className="border rounded-lg p-6">
                       <div className="flex items-center justify-between mb-6">
@@ -130,6 +158,59 @@ export default function ResultatsPage() {
                             : 'bg-teal-100 text-[#2a747f]'
                         }`}>
                           Total: {getTotalVotes(choices)} persones
+                        </div>
+                      </div>
+
+                      {/* Resumen para organizar mesas */}
+                      <div className={`rounded-lg p-4 mb-6 ${
+                        mealType === 'dinar' 
+                          ? 'bg-yellow-50 border border-yellow-200' 
+                          : 'bg-teal-50 border border-teal-200'
+                      }`}>
+                        <h4 className={`font-semibold mb-3 flex items-center gap-2 ${
+                          mealType === 'dinar' ? 'text-yellow-800' : 'text-[#2a747f]'
+                        }`}>
+                          🍽️ Resum per organitzar les taules
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+                          <div className={`p-3 rounded-lg ${
+                            mealType === 'dinar' ? 'bg-yellow-100' : 'bg-teal-100'
+                          }`}>
+                            <div className={`text-2xl font-bold ${
+                              mealType === 'dinar' ? 'text-yellow-800' : 'text-[#2a747f]'
+                            }`}>
+                              {summary.totalCoberts}
+                            </div>
+                            <div className={`text-sm font-medium ${
+                              mealType === 'dinar' ? 'text-yellow-700' : 'text-teal-700'
+                            }`}>
+                              Coberts
+                            </div>
+                          </div>
+                          <div className="p-3 bg-red-100 rounded-lg">
+                            <div className="text-2xl font-bold text-red-800">
+                              {summary.omnivors}
+                            </div>
+                            <div className="text-sm font-medium text-red-700">
+                              Omnívors
+                            </div>
+                          </div>
+                          <div className="p-3 bg-green-100 rounded-lg">
+                            <div className="text-2xl font-bold text-green-800">
+                              {summary.vegetarians}
+                            </div>
+                            <div className="text-sm font-medium text-green-700">
+                              Vegetarians
+                            </div>
+                          </div>
+                          <div className="p-3 bg-emerald-100 rounded-lg">
+                            <div className="text-2xl font-bold text-emerald-800">
+                              {summary.vegans}
+                            </div>
+                            <div className="text-sm font-medium text-emerald-700">
+                              Vegans
+                            </div>
+                          </div>
                         </div>
                       </div>
                       
@@ -176,18 +257,6 @@ export default function ResultatsPage() {
                     </div>
                   )
                 })}
-
-                {/* Información útil */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-blue-800 mb-2">
-                    ℹ️ Informació útil per organitzar les taules
-                  </h4>
-                  <ul className="text-sm text-blue-700 space-y-1">
-                    <li>• <strong>Cubiertos necessaris:</strong> Compte el total de persones que vindran</li>
-                    <li>• <strong>Tipus de menjar:</strong> Assegura&apos;t que hi ha prou plats de cada tipus</li>
-                    <li>• <strong>Organització:</strong> Pots agrupar persones amb les mateixes preferències</li>
-                  </ul>
-                </div>
               </div>
             ) : (
               <div className="text-center py-12">
