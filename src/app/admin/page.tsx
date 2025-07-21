@@ -23,10 +23,19 @@ export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   
-  // Obtener fecha de mañana por defecto
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowString = tomorrow.toISOString().split('T')[0]
+  // Obtener fecha de hoy por defecto - Función más robusta para evitar problemas de zona horaria
+  const getTodayDate = () => {
+    const today = new Date();
+    // Asegurar que trabajamos con la fecha local
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return localToday;
+  };
+
+  const today = getTodayDate();
+  // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
+  const todayString = today.getFullYear() + '-' + 
+    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(today.getDate()).padStart(2, '0');
   
   interface VoteStats {
     [meal_type: string]: {
@@ -38,7 +47,7 @@ export default function AdminPage() {
   }
   
   const [voteStats, setVoteStats] = useState<VoteStats | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string>(tomorrowString)
+  const [selectedDate, setSelectedDate] = useState<string>(todayString)
   const [loadingVotes, setLoadingVotes] = useState(false)
   
   const router = useRouter()
@@ -222,7 +231,11 @@ export default function AdminPage() {
   const generateSummary = () => {
     if (!voteStats) return ''
     
-    const formatDate = new Date(selectedDate).toLocaleDateString('ca-ES', {
+    // Crear fecha local sin problemas de zona horaria
+    const [year, month, day] = selectedDate.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    const formatDate = date.toLocaleDateString('ca-ES', {
       weekday: 'long',
       day: 'numeric',
       month: 'long'

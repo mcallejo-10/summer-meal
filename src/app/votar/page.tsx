@@ -40,16 +40,27 @@ export default function VotarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [existingVote, setExistingVote] = useState<Vote | null>(null);
 
-  // Obtenir la data de demà
-  const tomorrow = new Date();
-  tomorrow.setDate(tomorrow.getDate() + 1);
+  // Obtenir la data de demà - Función más robusta para evitar problemas de zona horaria
+  const getTomorrowDate = () => {
+    const today = new Date();
+    // Asegurar que trabajamos con la fecha local
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const tomorrow = new Date(localToday);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow;
+  };
+
+  const tomorrow = getTomorrowDate();
   const tomorrowFormatted = tomorrow.toLocaleDateString("ca-ES", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  const tomorrowDateString = tomorrow.toISOString().split("T")[0];
+  // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
+  const tomorrowDateString = tomorrow.getFullYear() + '-' + 
+    String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(tomorrow.getDate()).padStart(2, '0');
 
   // Obtenir el dia de demà en català per mostrar el menú
   const tomorrowInCatalan = tomorrow
@@ -90,6 +101,7 @@ export default function VotarPage() {
         tomorrowDateString,
         selectedMealType
       );
+      
       if (vote) {
         setExistingVote(vote);
         setSelectedVote(vote.choice);
@@ -248,7 +260,7 @@ export default function VotarPage() {
                   <button
                     key={user.id}
                     onClick={() => handleUserSelect(user.id)}
-                    className="p-4 bg-gray-50 rounded-lg border-2 border-transparent hover:border-blue-300 hover:bg-blue-50 transition-all focus:border-blue-500 focus:outline-none"
+                    className="p-4 bg-gray-50 rounded-lg border-2 border-transparent hover:border-orange-300 hover:bg-orange-50 transition-all focus:border-blue-500 focus:outline-none"
                   >
                     <div className="flex flex-col items-center">
                       {/* Avatar con fallback */}
@@ -258,7 +270,7 @@ export default function VotarPage() {
                           alt={`Avatar de ${user.name}`}
                           width={64}
                           height={64}
-                          className="w-full h-full rounded-full object-cover border-2 border-gray-200"
+                          className="w-full h-full rounded-full object-cover border-2 border-orange-300"
                           onError={(e) => {
                             // Fallback a imagen por defecto
                             const target = e.target as HTMLImageElement;

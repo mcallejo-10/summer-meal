@@ -19,11 +19,17 @@ export default function ResultatsPage() {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [loading, setLoading] = useState(false)
 
-  // Obtener fecha de hoy por defecto
+  // Obtener fecha de hoy por defecto - Función más robusta para evitar problemas de zona horaria
   useEffect(() => {
-    const today = new Date()
-    const todayString = today.toISOString().split('T')[0]
-    setSelectedDate(todayString)
+    const today = new Date();
+    // Asegurar que trabajamos con la fecha local
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
+    const todayString = localToday.getFullYear() + '-' + 
+      String(localToday.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(localToday.getDate()).padStart(2, '0');
+    
+    setSelectedDate(todayString);
   }, [])
 
   // Cargar estadísticas cuando cambie la fecha
@@ -46,7 +52,11 @@ export default function ResultatsPage() {
   }
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ca-ES', {
+    // Crear fecha local sin problemas de zona horaria
+    const [year, month, day] = dateString.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
+    
+    return date.toLocaleDateString('ca-ES', {
       weekday: 'long',
       day: 'numeric',
       month: 'long'

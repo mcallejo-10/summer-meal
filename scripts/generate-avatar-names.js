@@ -38,7 +38,7 @@ console.log("Coloca las imágenes en public/avatars/ con estos nombres:\n");
 
 userNames.forEach(name => {
   const normalizedName = normalizeUserName(name);
-  console.log(`${name} → ${normalizedName}.jpg`);
+  console.log(`${name} → ${normalizedName}.jpeg`);
 });
 
 console.log(`\nImagen por defecto: default.jpg`);
