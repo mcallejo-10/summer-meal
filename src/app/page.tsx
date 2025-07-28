@@ -1,14 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { ChefHat, CheckCircle, BarChart3, Settings, Calendar, Users, Utensils } from 'lucide-react'
+import { useEffect } from 'react'
+import { ChefHat, CheckCircle, BarChart3, Settings, Utensils } from 'lucide-react'
 import Link from 'next/link'
 import { getUsers } from '@/lib/supabase'
 
 export default function Home() {
-  const [totalUsers, setTotalUsers] = useState(0)
-  const [loading, setLoading] = useState(true)
-
   // Obtener información básica
   useEffect(() => {
     loadStats()
@@ -16,12 +13,9 @@ export default function Home() {
 
   const loadStats = async () => {
     try {
-      const users = await getUsers()
-      setTotalUsers(users.length)
+      await getUsers() // Solo verificamos la conexión
     } catch (error) {
       console.error('Error carregant estadístiques:', error)
-    } finally {
-      setLoading(false)
     }
   }
 

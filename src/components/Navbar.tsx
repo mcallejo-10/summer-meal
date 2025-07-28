@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Menu, X, Utensils, CheckCircle, BarChart3, Settings, ChefHat } from 'lucide-react'
+import { Menu, X, Utensils, CheckCircle, BarChart3, Settings } from 'lucide-react'
 
 export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
