@@ -40,30 +40,36 @@ export default function VotarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [existingVote, setExistingVote] = useState<Vote | null>(null);
 
-  // Obtenir la data de demà - Función más robusta para evitar problemas de zona horaria
-  const getTomorrowDate = () => {
-    const today = new Date();
-    // Asegurar que trabajamos con la fecha local
-    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const tomorrow = new Date(localToday);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow;
+  // Obtenir la data per votar - Lógica basada en hora límite de 9:00 AM
+  const getVotingDate = () => {
+    const now = new Date();
+    const currentHour = now.getHours();
+    
+    // Si son antes de las 9:00 AM, votan para hoy
+    // Si son después de las 9:00 AM, votan para mañana
+    const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    if (currentHour >= 9) {
+      // Después de las 9:00 AM - votar para mañana
+      targetDate.setDate(targetDate.getDate() + 1);
+    }
+    // Antes de las 9:00 AM - votar para hoy (no se añade nada)
+    
+    return targetDate;
   };
 
-  const tomorrow = getTomorrowDate();
-  const tomorrowFormatted = tomorrow.toLocaleDateString("ca-ES", {
+  const votingDate = getVotingDate();
+  const isVotingForToday = new Date().getHours() < 9;
+  
+  const votingDateFormatted = votingDate.toLocaleDateString("ca-ES", {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-  // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
-  const tomorrowDateString = tomorrow.getFullYear() + '-' + 
-    String(tomorrow.getMonth() + 1).padStart(2, '0') + '-' + 
-    String(tomorrow.getDate()).padStart(2, '0');
 
-  // Obtenir el dia de demà en català per mostrar el menú
-  const tomorrowInCatalan = tomorrow
+  // Obtenir el dia en català per mostrar el menú
+  const votingDayInCatalan = votingDate
     .toLocaleDateString("ca-ES", { weekday: "long" })
     .toLowerCase();
 
@@ -96,9 +102,22 @@ export default function VotarPage() {
     if (!selectedUser) return;
 
     try {
+      // Recalcular la fecha de votación dentro del callback
+      const now = new Date();
+      const currentHour = now.getHours();
+      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      if (currentHour >= 9) {
+        targetDate.setDate(targetDate.getDate() + 1);
+      }
+      
+      const dateString = targetDate.getFullYear() + '-' + 
+        String(targetDate.getMonth() + 1).padStart(2, '0') + '-' + 
+        String(targetDate.getDate()).padStart(2, '0');
+
       const vote = await getUserVoteForDate(
         selectedUser,
-        tomorrowDateString,
+        dateString,
         selectedMealType
       );
       
@@ -114,7 +133,7 @@ export default function VotarPage() {
     } catch (error) {
       console.error("Error comprovant vot existent:", error);
     }
-  }, [selectedUser, tomorrowDateString, selectedMealType]);
+  }, [selectedUser, selectedMealType]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -148,10 +167,22 @@ export default function VotarPage() {
 
         await updateVote(existingVote.id, updateData);
       } else {
-        // Crear nou vot
+        // Crear nou vot - recalcular fecha
+        const now = new Date();
+        const currentHour = now.getHours();
+        const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        
+        if (currentHour >= 9) {
+          targetDate.setDate(targetDate.getDate() + 1);
+        }
+        
+        const dateString = targetDate.getFullYear() + '-' + 
+          String(targetDate.getMonth() + 1).padStart(2, '0') + '-' + 
+          String(targetDate.getDate()).padStart(2, '0');
+
         const voteData = {
           user_id: selectedUser,
-          date: tomorrowDateString,
+          date: dateString,
           choice: selectedVote as
             | "omnivora"
             | "vegetariana"
@@ -173,10 +204,10 @@ export default function VotarPage() {
     }
   };
 
-  // Funcions per obtenir menús del dia següent (demà)
-  const getTomorrowsMenus = (mealType: "dinar" | "sopar") => {
+  // Funcions per obtenir menús del dia de votació
+  const getVotingMenus = (mealType: "dinar" | "sopar") => {
     return menus.filter(
-      (menu) => menu.day === tomorrowInCatalan && menu.meal_type === mealType
+      (menu) => menu.day === votingDayInCatalan && menu.meal_type === mealType
     );
   };
 
@@ -231,12 +262,17 @@ export default function VotarPage() {
                 <CheckCircle className="text-green-500" size={32} />
                 <div>
                   <h1 className="text-3xl font-bold text-gray-800">
-                    Votar per Demà
+                    Votar per {isVotingForToday ? "Avui" : "Demà"}
                   </h1>
                   <p className="text-gray-600 flex items-center gap-2">
                     <Calendar size={18} />
-                    {tomorrowFormatted}
+                    {votingDateFormatted}
                   </p>
+                  {isVotingForToday && (
+                    <p className="text-sm text-orange-600 mt-1">
+                      ⏰ Últimes hores per votar! (fins les 9:00 AM)
+                    </p>
+                  )}
                 </div>
               </div>
               <Link
@@ -353,11 +389,11 @@ export default function VotarPage() {
                       }`}>
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
                   📋 Opcions de{" "}
-                  {selectedMealType === "dinar" ? "dinar" : "sopar"} per demà:
+                  {selectedMealType === "dinar" ? "dinar" : "sopar"} per {isVotingForToday ? "avui" : "demà"}:
                 </h3>
-                {getTomorrowsMenus(selectedMealType).length > 0 ? (
+                {getVotingMenus(selectedMealType).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-                    {getTomorrowsMenus(selectedMealType).map((menu) => (
+                    {getVotingMenus(selectedMealType).map((menu) => (
                       <div
                         key={menu.id}
                         className={`rounded-lg p-4 border ${
@@ -386,7 +422,7 @@ export default function VotarPage() {
                   <p className="text-gray-600 text-sm mb-6">
                     No hi ha opcions de{" "}
                     {selectedMealType === "dinar" ? "dinar" : "sopar"}{" "}
-                    configurades per demà.
+                    configurades per {isVotingForToday ? "avui" : "demà"}.
                   </p>
                 )}
 
@@ -394,7 +430,7 @@ export default function VotarPage() {
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800 mb-4">
                       Què vols{" "}
-                      {selectedMealType === "dinar" ? "dinar" : "sopar"} demà?
+                      {selectedMealType === "dinar" ? "dinar" : "sopar"} {isVotingForToday ? "avui" : "demà"}?
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                       {voteOptions.map((option) => (
@@ -434,7 +470,7 @@ export default function VotarPage() {
                           ? "¡Vot actualitzat correctament! ✅"
                           : "¡Vot registrat correctament! ✅"}
                       </h3>
-                      <p>La teva elecció per demà ha estat guardada.</p>
+                      <p>La teva elecció per {isVotingForToday ? "avui" : "demà"} ha estat guardada.</p>
                     </div>
                     <button
                       onClick={() => {
