@@ -23,29 +23,19 @@ export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   
-  // Obtener fecha de votación según lógica de 9:00 AM - igual que en página de votaciones
-  const getVotingDate = () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    
-    // Si son antes de las 9:00 AM, votan para hoy
-    // Si son después de las 9:00 AM, votan para mañana
-    const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    if (currentHour >= 9) {
-      // Después de las 9:00 AM - votar para mañana
-      targetDate.setDate(targetDate.getDate() + 1);
-    }
-    // Antes de las 9:00 AM - votar para hoy (no se añade nada)
-    
-    return targetDate;
+  // Obtener fecha de hoy para ver resultados del día actual (para organizar mesas)
+  const getTodayDate = () => {
+    const today = new Date();
+    // Asegurar que trabajamos con la fecha local
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    return localToday;
   };
 
-  const votingDate = getVotingDate();
+  const today = getTodayDate();
   // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
-  const votingDateString = votingDate.getFullYear() + '-' + 
-    String(votingDate.getMonth() + 1).padStart(2, '0') + '-' + 
-    String(votingDate.getDate()).padStart(2, '0');
+  const todayString = today.getFullYear() + '-' + 
+    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
+    String(today.getDate()).padStart(2, '0');
   
   interface VoteStats {
     [meal_type: string]: {
@@ -57,7 +47,7 @@ export default function AdminPage() {
   }
   
   const [voteStats, setVoteStats] = useState<VoteStats | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string>(votingDateString)
+  const [selectedDate, setSelectedDate] = useState<string>(todayString)
   const [loadingVotes, setLoadingVotes] = useState(false)
   
   const router = useRouter()

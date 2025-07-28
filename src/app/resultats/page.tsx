@@ -19,32 +19,17 @@ export default function ResultatsPage() {
   const [selectedDate, setSelectedDate] = useState<string>('')
   const [loading, setLoading] = useState(false)
 
-  // Obtener fecha de votación según lógica de 9:00 AM - igual que en página de votaciones
+  // Obtener fecha de hoy para ver resultados del día actual (para organizar mesas)
   useEffect(() => {
-    const getVotingDate = () => {
-      const now = new Date();
-      const currentHour = now.getHours();
-      
-      // Si son antes de las 9:00 AM, votan para hoy
-      // Si son después de las 9:00 AM, votan para mañana
-      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      if (currentHour >= 9) {
-        // Después de las 9:00 AM - votar para mañana
-        targetDate.setDate(targetDate.getDate() + 1);
-      }
-      // Antes de las 9:00 AM - votar para hoy (no se añade nada)
-      
-      return targetDate;
-    };
-
-    const votingDate = getVotingDate();
+    const today = new Date();
+    // Asegurar que trabajamos con la fecha local
+    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
     // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
-    const votingDateString = votingDate.getFullYear() + '-' + 
-      String(votingDate.getMonth() + 1).padStart(2, '0') + '-' + 
-      String(votingDate.getDate()).padStart(2, '0');
+    const todayString = localToday.getFullYear() + '-' + 
+      String(localToday.getMonth() + 1).padStart(2, '0') + '-' + 
+      String(localToday.getDate()).padStart(2, '0');
     
-    setSelectedDate(votingDateString);
+    setSelectedDate(todayString);
   }, [])
 
   // Cargar estadísticas cuando cambie la fecha
