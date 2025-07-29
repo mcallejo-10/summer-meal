@@ -578,7 +578,7 @@ export default function AdminPage() {
                   type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
-                  className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="border border-gray-300 text-gray-500 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
                 />
               </div>
             </div>
@@ -591,13 +591,13 @@ export default function AdminPage() {
             ) : voteStats && Object.keys(voteStats).length > 0 ? (
               <div className="space-y-8">
                 {/* Resumen para compartir */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 ">
+                  <div className="flex items-center justify-between mb-3 flex flex-wrap ">
                     <h4 className="font-semibold text-blue-800 flex items-center gap-2">
                       <Share2 size={18} />
                       Resum dels vots per restaurant
                     </h4>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <button
                         onClick={copyToClipboard}
                         className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
