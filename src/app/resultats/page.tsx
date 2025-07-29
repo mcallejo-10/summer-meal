@@ -180,7 +180,7 @@ export default function ResultatsPage() {
                               : "text-[#2a747f]"
                           }`}
                         >
-                          {mealType === "dinar" ? "🌞 Dinar" : "🌙 Sopar"}
+                          {mealType === "dinar" ? "☀️ Dinar" : "🌙 Sopar"}
                         </h3>
                         <div
                           className={`px-4 py-2 rounded-full text-sm font-bold ${

@@ -317,9 +317,9 @@ export default function AdminPage() {
             </div>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+              className="flex items-center px-2 py-2 bg-red-500 text-white text-xs rounded hover:bg-red-600 transition-colors"
             >
-              <LogOut size={18} />
+              <LogOut size={12}  />
               Tancar Sessió
             </button>
           </div>
