@@ -40,26 +40,23 @@ export default function VotarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [existingVote, setExistingVote] = useState<Vote | null>(null);
 
-  // Obtenir la data per votar - Lógica basada en hora límite de 9:00 AM
   const getVotingDate = () => {
     const now = new Date();
     const currentHour = now.getHours();
     
-    // Si son antes de las 9:00 AM, votan para hoy
-    // Si son después de las 9:00 AM, votan para mañana
     const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     
-    if (currentHour >= 9) {
-      // Después de las 9:00 AM - votar para mañana
+    if (currentHour >= 10) {
+      // Después de las 10:00 AM - votar para mañana
       targetDate.setDate(targetDate.getDate() + 1);
     }
-    // Antes de las 9:00 AM - votar para hoy (no se añade nada)
+  
     
     return targetDate;
   };
 
   const votingDate = getVotingDate();
-  const isVotingForToday = new Date().getHours() < 9;
+  const isVotingForToday = new Date().getHours() < 10;
   
   const votingDateFormatted = votingDate.toLocaleDateString("ca-ES", {
     weekday: "long",
@@ -107,7 +104,7 @@ export default function VotarPage() {
       const currentHour = now.getHours();
       const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
-      if (currentHour >= 9) {
+      if (currentHour >= 10) {
         targetDate.setDate(targetDate.getDate() + 1);
       }
       
@@ -172,7 +169,7 @@ export default function VotarPage() {
         const currentHour = now.getHours();
         const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         
-        if (currentHour >= 9) {
+        if (currentHour >= 10) {
           targetDate.setDate(targetDate.getDate() + 1);
         }
         
@@ -270,7 +267,7 @@ export default function VotarPage() {
                   </p>
                   {isVotingForToday && (
                     <p className="text-sm text-orange-600 mt-1">
-                      ⏰ Últimes hores per votar! (fins les 9:00 AM)
+                      ⏰ Últimes hores per votar! (fins les 10:00 AM)
                     </p>
                   )}
                 </div>
