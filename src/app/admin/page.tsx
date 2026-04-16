@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase-auth'
+import { createClient } from '@/lib/supabase-browser'
 import type { Session, User } from '@supabase/supabase-js'
 import { 
   getMenus, 

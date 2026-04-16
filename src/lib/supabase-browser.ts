@@ -1,7 +1,15 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { env } from './env'
 
-// Instancia global de cliente para evitar múltiples instancias
+/**
+ * Client de Supabase per al NAVEGADOR (components amb 'use client').
+ * 
+ * EN ANGULAR: Seria com el HttpClient configurat al AppModule.
+ * Només hi ha una instància (singleton) per evitar crear connexions duplicades.
+ * 
+ * IMPORTANT: Només usar en fitxers amb 'use client' al principi.
+ * Per a Server Components, usar supabase-server.ts
+ */
 let supabaseInstance: ReturnType<typeof createBrowserClient> | null = null
 
 export function createClient() {
@@ -13,5 +21,3 @@ export function createClient() {
   }
   return supabaseInstance
 }
-
-export const supabase = createClient()

@@ -1,8 +1,13 @@
-import { createClient } from '@/lib/supabase-auth'
+import { createClient } from '@/lib/supabase-browser'
 
-// Usar la instancia única para evitar múltiples clientes
-export const supabase = createClient()
-export const supabaseAuth = createClient()
+/**
+ * Client singleton per a operacions des del navegador.
+ * 
+ * NOTA: Totes les funcions d'aquest fitxer utilitzen el client del navegador.
+ * Quan convertim pàgines a Server Components, crearem versions server-side
+ * d'aquestes funcions que utilitzin supabase-server.ts en comptes d'aquesta.
+ */
+const supabase = createClient()
 
 // Tipus per a les nostres taules de base de dades
 export interface User {
@@ -89,7 +94,7 @@ export async function createMenu(menu: Omit<Menu, 'id' | 'created_at'>) {
     created_at: new Date().toISOString()
   }
   
-  const { data, error } = await supabaseAuth
+  const { data, error } = await supabase
     .from('menus')
     .insert([menuWithTimestamp])
     .select()
@@ -102,7 +107,7 @@ export async function createMenu(menu: Omit<Menu, 'id' | 'created_at'>) {
 }
 
 export async function updateMenu(menuId: string, updates: Partial<Menu>) {
-  const { data, error } = await supabaseAuth
+  const { data, error } = await supabase
     .from('menus')
     .update(updates)
     .eq('id', menuId)
@@ -117,7 +122,7 @@ export async function updateMenu(menuId: string, updates: Partial<Menu>) {
 }
 
 export async function deleteMenu(menuId: string) {
-  const { error } = await supabaseAuth
+  const { error } = await supabase
     .from('menus')
     .delete()
     .eq('id', menuId)
