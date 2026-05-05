@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BarChart3, Calendar, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getVoteStats } from "@/lib/supabase";
+import { getLocalToday, formatDateToISO, formatDateToCatalan } from "@/lib/dates";
 
 interface VoteStats {
   [meal_type: string]: {
@@ -19,24 +20,8 @@ export default function ResultatsPage() {
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(false);
 
-  // Obtener fecha de hoy para ver resultados del día actual (para organizar mesas)
   useEffect(() => {
-    const today = new Date();
-    // Asegurar que trabajamos con la fecha local
-    const localToday = new Date(
-      today.getFullYear(),
-      today.getMonth(),
-      today.getDate()
-    );
-    // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
-    const todayString =
-      localToday.getFullYear() +
-      "-" +
-      String(localToday.getMonth() + 1).padStart(2, "0") +
-      "-" +
-      String(localToday.getDate()).padStart(2, "0");
-
-    setSelectedDate(todayString);
+    setSelectedDate(formatDateToISO(getLocalToday()));
   }, []);
 
   // Cargar estadísticas cuando cambie la fecha
@@ -59,15 +44,8 @@ export default function ResultatsPage() {
   };
 
   const formatDate = (dateString: string) => {
-    // Crear fecha local sin problemas de zona horaria
     const [year, month, day] = dateString.split("-").map(Number);
-    const date = new Date(year, month - 1, day);
-
-    return date.toLocaleDateString("ca-ES", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-    });
+    return formatDateToCatalan(new Date(year, month - 1, day));
   };
 
   const getTotalVotes = (

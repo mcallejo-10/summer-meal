@@ -12,7 +12,8 @@ import { NextResponse, type NextRequest } from 'next/server'
  * 
  * Funcions:
  * 1. Refresca la sessió de Supabase (les cookies expiren, cal renovar-les)
- * 2. Protegeix /admin: si no tens sessió, et redirigeix a /login
+ * 2. Protegeix /admin i /votar: si no tens sessió, et redirigeix a /login
+ * 3. Si ja tens sessió i vas a /login, et redirigeix a /votar (evita pantalla de login innecessària)
  */
 export async function middleware(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -28,7 +29,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -46,10 +47,23 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Protegir ruta /admin: redirigir a /login si no hi ha sessió
-  if (request.nextUrl.pathname.startsWith('/admin') && !user) {
+  const isProtectedRoute =
+    request.nextUrl.pathname.startsWith('/admin') ||
+    request.nextUrl.pathname.startsWith('/votar')
+
+  const isLoginPage = request.nextUrl.pathname === '/login'
+
+  // Si la ruta requereix auth i no hi ha sessió → redirigir a /login
+  if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
+    return NextResponse.redirect(url)
+  }
+
+  // Si ja estàs logat i vas a /login → redirigir a /votar directament
+  if (isLoginPage && user) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/votar'
     return NextResponse.redirect(url)
   }
 

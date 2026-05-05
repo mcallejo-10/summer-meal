@@ -14,6 +14,14 @@ import {
   type Vote,
   type Menu,
 } from "@/lib/supabase";
+import {
+  getVotingDate,
+  isVotingForToday,
+  formatDateToISO,
+  formatDateToCatalan,
+  getDayNameInCatalan,
+} from "@/lib/dates";
+
 
 const voteOptions = [
   { value: "omnivora", label: "🥩 Omnívora", color: "bg-red-500" },
@@ -40,35 +48,14 @@ export default function VotarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [existingVote, setExistingVote] = useState<Vote | null>(null);
 
-  const getVotingDate = () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    
-    const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    if (currentHour >= 10) {
-      // Después de las 10:00 AM - votar para mañana
-      targetDate.setDate(targetDate.getDate() + 1);
-    }
-  
-    
-    return targetDate;
-  };
-
   const votingDate = getVotingDate();
-  const isVotingForToday = new Date().getHours() < 10;
-  
-  const votingDateFormatted = votingDate.toLocaleDateString("ca-ES", {
+  const votingForToday = isVotingForToday();
+  const votingDateFormatted = formatDateToCatalan(votingDate, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
-
-  // Obtenir el dia en català per mostrar el menú
-  const votingDayInCatalan = votingDate
-    .toLocaleDateString("ca-ES", { weekday: "long" })
-    .toLowerCase();
 
   useEffect(() => {
     loadUsers();
@@ -99,18 +86,7 @@ export default function VotarPage() {
     if (!selectedUser) return;
 
     try {
-      // Recalcular la fecha de votación dentro del callback
-      const now = new Date();
-      const currentHour = now.getHours();
-      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      if (currentHour >= 10) {
-        targetDate.setDate(targetDate.getDate() + 1);
-      }
-      
-      const dateString = targetDate.getFullYear() + '-' + 
-        String(targetDate.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(targetDate.getDate()).padStart(2, '0');
+      const dateString = formatDateToISO(getVotingDate());
 
       const vote = await getUserVoteForDate(
         selectedUser,
@@ -164,22 +140,10 @@ export default function VotarPage() {
 
         await updateVote(existingVote.id, updateData);
       } else {
-        // Crear nou vot - recalcular fecha
-        const now = new Date();
-        const currentHour = now.getHours();
-        const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        if (currentHour >= 10) {
-          targetDate.setDate(targetDate.getDate() + 1);
-        }
-        
-        const dateString = targetDate.getFullYear() + '-' + 
-          String(targetDate.getMonth() + 1).padStart(2, '0') + '-' + 
-          String(targetDate.getDate()).padStart(2, '0');
-
         const voteData = {
+          date: formatDateToISO(getVotingDate()),
+          
           user_id: selectedUser,
-          date: dateString,
           choice: selectedVote as
             | "omnivora"
             | "vegetariana"
@@ -204,7 +168,7 @@ export default function VotarPage() {
   // Funcions per obtenir menús del dia de votació
   const getVotingMenus = (mealType: "dinar" | "sopar") => {
     return menus.filter(
-      (menu) => menu.day === votingDayInCatalan && menu.meal_type === mealType
+      (menu) => menu.day === getDayNameInCatalan(votingDate) && menu.meal_type === mealType
     );
   };
 
@@ -259,13 +223,13 @@ export default function VotarPage() {
                 <CheckCircle className="text-green-500" size={32} />
                 <div>
                   <h1 className="text-3xl font-bold text-gray-800">
-                    Votar per {isVotingForToday ? "Avui" : "Demà"}
+                    Votar per {votingForToday ? "Avui" : "Demà"}
                   </h1>
                   <p className="text-gray-600 flex items-center gap-2">
                     <Calendar size={18} />
                     {votingDateFormatted}
                   </p>
-                  {isVotingForToday && (
+                  {votingForToday && (
                     <p className="text-sm text-orange-600 mt-1">
                       ⏰ Últimes hores per votar! (fins les 10:00 AM)
                     </p>
@@ -386,7 +350,7 @@ export default function VotarPage() {
                       }`}>
                 <h3 className="text-lg font-semibold text-gray-800 mb-4">
                   📋 Opcions de{" "}
-                  {selectedMealType === "dinar" ? "dinar" : "sopar"} per {isVotingForToday ? "avui" : "demà"}:
+                  {selectedMealType === "dinar" ? "dinar" : "sopar"} per {votingForToday ? "avui" : "demà"}:
                 </h3>
                 {getVotingMenus(selectedMealType).length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
@@ -419,7 +383,7 @@ export default function VotarPage() {
                   <p className="text-gray-600 text-sm mb-6">
                     No hi ha opcions de{" "}
                     {selectedMealType === "dinar" ? "dinar" : "sopar"}{" "}
-                    configurades per {isVotingForToday ? "avui" : "demà"}.
+                    configurades per {votingForToday ? "avui" : "demà"}.
                   </p>
                 )}
 
@@ -427,7 +391,7 @@ export default function VotarPage() {
                   <div>
                     <h3 className="text-xl font-semibold text-gray-800 mb-4">
                       Què vols{" "}
-                      {selectedMealType === "dinar" ? "dinar" : "sopar"} {isVotingForToday ? "avui" : "demà"}?
+                      {selectedMealType === "dinar" ? "dinar" : "sopar"} {votingForToday ? "avui" : "demà"}?
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
                       {voteOptions.map((option) => (
@@ -467,7 +431,7 @@ export default function VotarPage() {
                           ? "¡Vot actualitzat correctament! ✅"
                           : "¡Vot registrat correctament! ✅"}
                       </h3>
-                      <p>La teva elecció per {isVotingForToday ? "avui" : "demà"} ha estat guardada.</p>
+                      <p>La teva elecció per {votingForToday ? "avui" : "demà"} ha estat guardada.</p>
                     </div>
                     <button
                       onClick={() => {

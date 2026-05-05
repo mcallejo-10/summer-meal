@@ -15,22 +15,10 @@
  */
 import { ChefHat, CheckCircle, BarChart3, Settings, Utensils } from 'lucide-react'
 import Link from 'next/link'
-
-// Funció helper per obtenir la data de demà en format català.
-// S'executa al servidor, per tant forcem la timezone de Barcelona.
-function getTomorrowFormatted(): string {
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  return tomorrow.toLocaleDateString('ca-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    timeZone: 'Europe/Madrid' // Assegurem la timezone correcta al servidor
-  })
-}
+import { getTomorrow, formatDateToCatalan } from '@/lib/dates'
 
 export default function Home() {
-  const tomorrowFormatted = getTomorrowFormatted()
+  const tomorrowFormatted = formatDateToCatalan(getTomorrow())
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">

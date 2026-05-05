@@ -13,6 +13,7 @@ import {
   getVoteStats,
   type Menu 
 } from '@/lib/supabase'
+import { getLocalToday, formatDateToISO, formatDateToCatalan } from '@/lib/dates'
 
 export default function AdminPage() {
   const [selectedTab, setSelectedTab] = useState<'menus' | 'votes'>('menus')
@@ -23,19 +24,7 @@ export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   
-  // Obtener fecha de hoy para ver resultados del día actual (para organizar mesas)
-  const getTodayDate = () => {
-    const today = new Date();
-    // Asegurar que trabajamos con la fecha local
-    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    return localToday;
-  };
-
-  const today = getTodayDate();
-  // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
-  const todayString = today.getFullYear() + '-' + 
-    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-    String(today.getDate()).padStart(2, '0');
+  const todayString = formatDateToISO(getLocalToday());
   
   interface VoteStats {
     [meal_type: string]: {
@@ -231,17 +220,10 @@ export default function AdminPage() {
   const generateSummary = () => {
     if (!voteStats) return ''
     
-    // Crear fecha local sin problemas de zona horaria
     const [year, month, day] = selectedDate.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
+    const formattedDate = formatDateToCatalan(new Date(year, month - 1, day));
     
-    const formatDate = date.toLocaleDateString('ca-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    })
-    
-    let summary = `📋 Resum per ${formatDate}\n\n`
+    let summary = `📋 Resum per ${formattedDate}\n\n`
     
     Object.entries(voteStats).forEach(([mealType, choices]) => {
       if (Object.keys(choices).length === 0) return
@@ -592,7 +574,7 @@ export default function AdminPage() {
               <div className="space-y-8">
                 {/* Resumen para compartir */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 ">
-                  <div className="flex items-center justify-between mb-3 flex flex-wrap ">
+                  <div className="flex flex-wrap items-center justify-between mb-3">
                     <h4 className="font-semibold text-blue-800 flex items-center gap-2">
                       <Share2 size={18} />
                       Resum dels vots per restaurant
