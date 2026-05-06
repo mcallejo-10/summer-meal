@@ -48,9 +48,16 @@ export async function GET(request: NextRequest) {
 
   // Flux 1: OAuth o magic link amb "code" (PKCE flow)
   if (code) {
-    const { error } = await supabase.auth.exchangeCodeForSession(code)
-    if (!error) {
-      return NextResponse.redirect(new URL('/votar', requestUrl.origin))
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    if (!error && data.user) {
+      const { data: userData } = await supabase
+        .from('users')
+        .select('is_admin')
+        .eq('id', data.user.id)
+        .single()
+
+      const redirectTo = userData?.is_admin ? '/admin' : '/votar'
+      return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
     }
   }
 
