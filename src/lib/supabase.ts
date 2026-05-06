@@ -13,6 +13,7 @@ const supabase = createClient()
 export interface User {
   id: string
   name: string
+  email?: string
   is_admin: boolean
   created_at: string
 }
@@ -29,8 +30,9 @@ export interface Menu {
 export interface Vote {
   id: string
   user_id: string
+  voted_by?: string | null
   date: string
-  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'  
+  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'
   meal_type: 'dinar' | 'sopar'
   created_at: string
   updated_at: string
