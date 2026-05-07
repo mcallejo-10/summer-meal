@@ -60,10 +60,17 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Si ja estàs logat i vas a /login → redirigir a /votar directament
+  // Si ja estàs logat i vas a /login → redirigir a la pàgina correcta
+  // Les admins han d'anar a /admin, la resta a /votar
   if (isLoginPage && user) {
+    const { data: userData } = await supabase
+      .from('users')
+      .select('is_admin')
+      .eq('id', user.id)
+      .single()
+
     const url = request.nextUrl.clone()
-    url.pathname = '/votar'
+    url.pathname = userData?.is_admin ? '/admin' : '/votar'
     return NextResponse.redirect(url)
   }
 
