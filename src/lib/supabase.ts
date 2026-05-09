@@ -172,6 +172,18 @@ export async function getVotesByDate(date: string) {
   return data || []
 }
 
+// Retorna els usuaris que NO han votat per a una data concreta
+export async function getNotVotedUsers(date: string): Promise<{ id: string; name: string }[]> {
+  const [{ data: allUsers }, { data: votes }] = await Promise.all([
+    supabase.from('users').select('id, name').order('name'),
+    supabase.from('votes').select('user_id').eq('date', date),
+  ])
+
+  if (!allUsers) return []
+  const votedIds = new Set(votes?.map((v: { user_id: string }) => v.user_id) || [])
+  return allUsers.filter((u: { id: string; name: string }) => !votedIds.has(u.id))
+}
+
 // Nueva función para obtener estadísticas de votos
 export async function getVoteStats(date: string) {
   const { data, error } = await supabase
