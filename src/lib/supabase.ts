@@ -179,7 +179,7 @@ export async function getVoteStats(date: string) {
     .select(`
       choice,
       meal_type,
-      users(name)
+      voter:users!votes_user_id_fkey(name)
     `)
     .eq('date', date)
   
@@ -194,10 +194,10 @@ export async function getVoteStats(date: string) {
     sopar: {} as Record<string, { count: number; users: string[] }>
   }
 
-  data?.forEach((vote: { choice: string; meal_type: string; users: { name: string } | null }) => {
+  data?.forEach((vote: { choice: string; meal_type: string; voter: { name: string } | null }) => {
     const mealType = vote.meal_type as 'dinar' | 'sopar'
     const choice = vote.choice
-    const userName = vote.users?.name || 'Usuario desconocido'
+    const userName = vote.voter?.name || 'Usuari desconegut'
 
     if (!stats[mealType][choice]) {
       stats[mealType][choice] = { count: 0, users: [] }
