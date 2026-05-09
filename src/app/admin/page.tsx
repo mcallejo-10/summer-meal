@@ -14,7 +14,7 @@ import {
   type Menu,
   type User as AppUser,
 } from '@/lib/supabase'
-import { getLocalToday, formatDateToISO, formatDateToCatalan } from '@/lib/dates'
+import { getResultsDate, formatDateToISO, formatDateToCatalan } from '@/lib/dates'
 
 export default function AdminPage() {
   const [selectedTab, setSelectedTab] = useState<'menus' | 'votes' | 'usuaris'>('menus')
@@ -25,7 +25,7 @@ export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   
-  const todayString = formatDateToISO(getLocalToday());
+  const todayString = formatDateToISO(getResultsDate());
   
   interface VoteStats {
     [meal_type: string]: {
