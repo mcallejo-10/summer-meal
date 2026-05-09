@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { BarChart3, Calendar, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getVoteStats } from "@/lib/supabase";
-import { getLocalToday, formatDateToISO, formatDateToCatalan } from "@/lib/dates";
+import { getResultsDate, formatDateToISO, formatDateToCatalan } from "@/lib/dates";
 
 interface VoteStats {
   [meal_type: string]: {
@@ -21,7 +21,7 @@ export default function ResultatsPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setSelectedDate(formatDateToISO(getLocalToday()));
+    setSelectedDate(formatDateToISO(getResultsDate()));
   }, []);
 
   // Cargar estadísticas cuando cambie la fecha

@@ -11,8 +11,11 @@
  * exportades des d'un fitxer de utilitats. Més simple, mateix resultat.
  */
 
-/** Hora límit: abans d'aquesta hora es vota per avui, després per demà */
+/** Hora límit per votar: abans d'aquesta hora es vota per avui, després per demà (10h AM) */
 export const VOTING_CUTOFF_HOUR = 10
+
+/** Hora límit per als resultats: a partir d'aquí el default passa a mostrar demà (22h PM) */
+export const RESULTS_CUTOFF_HOUR = 22
 
 /**
  * Retorna la data d'avui sense problemes de timezone.
@@ -54,6 +57,19 @@ export function getVotingDate(): Date {
  */
 export function isVotingForToday(): boolean {
   return new Date().getHours() < VOTING_CUTOFF_HOUR
+}
+
+/**
+ * Retorna la data per mostrar als resultats:
+ * - Abans de les 22h → avui (el sopar encara no ha acabat)
+ * - A partir de les 22h → demà (el sopar ja ha passat, la gent ja vota per demà)
+ */
+export function getResultsDate(): Date {
+  const targetDate = getLocalToday()
+  if (new Date().getHours() >= RESULTS_CUTOFF_HOUR) {
+    targetDate.setDate(targetDate.getDate() + 1)
+  }
+  return targetDate
 }
 
 /**
