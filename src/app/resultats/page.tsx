@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart3, Calendar, ArrowLeft } from "lucide-react";
+import { BarChart3, Calendar, ArrowLeft, UserX } from "lucide-react";
 import Link from "next/link";
-import { getVoteStats } from "@/lib/supabase";
+import { getVoteStats, getNotVotedUsers } from "@/lib/supabase";
 import { getResultsDate, formatDateToISO, formatDateToCatalan } from "@/lib/dates";
 
 interface VoteStats {
@@ -19,6 +19,7 @@ export default function ResultatsPage() {
   const [voteStats, setVoteStats] = useState<VoteStats | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [notVotedUsers, setNotVotedUsers] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
     setSelectedDate(formatDateToISO(getResultsDate()));
@@ -34,8 +35,12 @@ export default function ResultatsPage() {
   const loadVoteStats = async (date: string) => {
     setLoading(true);
     try {
-      const stats = await getVoteStats(date);
+      const [stats, notVoted] = await Promise.all([
+        getVoteStats(date),
+        getNotVotedUsers(date),
+      ]);
       setVoteStats(stats);
+      setNotVotedUsers(notVoted);
     } catch (error) {
       console.error("Error carregant estadístiques de vots:", error);
     } finally {
@@ -310,6 +315,38 @@ export default function ResultatsPage() {
               </div>
             )}
           </div>
+
+          {/* Qui no ha votat */}
+          {!loading && (
+            <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+              <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <UserX size={20} className="text-red-500" />
+                Qui no ha votat
+                {notVotedUsers.length > 0 && (
+                  <span className="ml-1 px-2 py-0.5 bg-red-100 text-red-700 text-sm rounded-full font-medium">
+                    {notVotedUsers.length}
+                  </span>
+                )}
+              </h3>
+              {notVotedUsers.length === 0 ? (
+                <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm">
+                  ✅ Tothom ha votat per aquesta data!
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {notVotedUsers.map((u) => (
+                    <span
+                      key={u.id}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 rounded-full text-sm font-medium"
+                    >
+                      <UserX size={12} />
+                      {u.name}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
