@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Calendar, ArrowLeft, CheckCircle } from "lucide-react";
+import { Calendar, ArrowLeft, CheckCircle, Users, ChevronDown, LogOut } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase-browser";
 import {
   getUsers,
   getMenus,
@@ -14,6 +16,17 @@ import {
   type Vote,
   type Menu,
 } from "@/lib/supabase";
+
+import {
+  getVotingDate,
+  isVotingForToday,
+  formatDateToISO,
+  formatDateToCatalan,
+  getDayNameInCatalan,
+} from "@/lib/dates";
+
+const supabase = createClient();
+
 
 const voteOptions = [
   { value: "omnivora", label: "🥩 Omnívora", color: "bg-red-500" },
@@ -28,89 +41,62 @@ const voteOptions = [
 ] as const;
 
 export default function VotarPage() {
+  const router = useRouter();
+
   const [users, setUsers] = useState<UserType[]>([]);
   const [menus, setMenus] = useState<Menu[]>([]);
+  const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
-  const [selectedMealType, setSelectedMealType] = useState<"dinar" | "sopar">(
-    "dinar"
-  );
+  const [selectedMealType, setSelectedMealType] = useState<"dinar" | "sopar">("dinar");
   const [selectedVote, setSelectedVote] = useState<string>("");
   const [isVoteSubmitted, setIsVoteSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [existingVote, setExistingVote] = useState<Vote | null>(null);
-
-  const getVotingDate = () => {
-    const now = new Date();
-    const currentHour = now.getHours();
-    
-    const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    
-    if (currentHour >= 10) {
-      // Después de las 10:00 AM - votar para mañana
-      targetDate.setDate(targetDate.getDate() + 1);
-    }
-  
-    
-    return targetDate;
-  };
+  const [isColleagueExpanded, setIsColleagueExpanded] = useState(false);
 
   const votingDate = getVotingDate();
-  const isVotingForToday = new Date().getHours() < 10;
-  
-  const votingDateFormatted = votingDate.toLocaleDateString("ca-ES", {
+  const votingForToday = isVotingForToday();
+  const votingDateFormatted = formatDateToCatalan(votingDate, {
     weekday: "long",
     year: "numeric",
     month: "long",
     day: "numeric",
   });
 
-  // Obtenir el dia en català per mostrar el menú
-  const votingDayInCatalan = votingDate
-    .toLocaleDateString("ca-ES", { weekday: "long" })
-    .toLowerCase();
-
+  // Carreguem sessió + usuaris + menús en paral·lel (més ràpid que en seqüència)
+  // Promise.all espera que els 3 es completin i retorna els resultats en ordre.
+  // EN ANGULAR: seria forkJoin([getUser$, getUsers$, getMenus$])
   useEffect(() => {
-    loadUsers();
-    loadMenus();
-  }, []);
+    async function init() {
+      const [
+        { data: { user } },
+        usersData,
+        menusData,
+      ] = await Promise.all([
+        supabase.auth.getUser(),
+        getUsers(),
+        getMenus(),
+      ]);
 
-  const loadUsers = async () => {
-    try {
-      const usersData = await getUsers();
       setUsers(usersData);
-    } catch (error) {
-      console.error("Error carregant usuaris:", error);
-    } finally {
+      setMenus(menusData);
+
+      if (user) {
+        setLoggedInUserId(user.id);
+        setSelectedUser(user.id); // pre-seleccionem l'usuari loguejat
+      }
+
       setLoading(false);
     }
-  };
-
-  const loadMenus = async () => {
-    try {
-      const menusData = await getMenus();
-      setMenus(menusData);
-    } catch (error) {
-      console.error("Error carregant menús:", error);
-    }
-  };
+    init();
+  }, []);
 
   const checkExistingVote = useCallback(async () => {
     if (!selectedUser) return;
 
     try {
-      // Recalcular la fecha de votación dentro del callback
-      const now = new Date();
-      const currentHour = now.getHours();
-      const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      
-      if (currentHour >= 10) {
-        targetDate.setDate(targetDate.getDate() + 1);
-      }
-      
-      const dateString = targetDate.getFullYear() + '-' + 
-        String(targetDate.getMonth() + 1).padStart(2, '0') + '-' + 
-        String(targetDate.getDate()).padStart(2, '0');
+      const dateString = formatDateToISO(getVotingDate());
 
       const vote = await getUserVoteForDate(
         selectedUser,
@@ -138,12 +124,31 @@ export default function VotarPage() {
     }
   }, [selectedUser, selectedMealType, checkExistingVote]);
 
-  const handleUserSelect = (userId: string) => {
+  const handleColleagueSelect = (userId: string) => {
     setSelectedUser(userId);
     setSelectedVote("");
     setIsVoteSubmitted(false);
     setExistingVote(null);
+    setIsColleagueExpanded(false);
   };
+
+  const handleVoteSelf = () => {
+    setSelectedUser(loggedInUserId);
+    setSelectedVote("");
+    setIsVoteSubmitted(false);
+    setExistingVote(null);
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/login");
+  };
+
+  // Variables derivades: calculades a partir de l'estat, no emmagatzemades.
+  // EN ANGULAR: seria com getters en un component.
+  const loggedInUser = users.find((u) => u.id === loggedInUserId);
+  const votingForUser = users.find((u) => u.id === selectedUser);
+  const isVotingForSelf = selectedUser === loggedInUserId;
 
   const handleVoteSubmit = async () => {
     if (!selectedVote || !selectedUser || submitting) return;
@@ -164,22 +169,10 @@ export default function VotarPage() {
 
         await updateVote(existingVote.id, updateData);
       } else {
-        // Crear nou vot - recalcular fecha
-        const now = new Date();
-        const currentHour = now.getHours();
-        const targetDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        
-        if (currentHour >= 10) {
-          targetDate.setDate(targetDate.getDate() + 1);
-        }
-        
-        const dateString = targetDate.getFullYear() + '-' + 
-          String(targetDate.getMonth() + 1).padStart(2, '0') + '-' + 
-          String(targetDate.getDate()).padStart(2, '0');
-
         const voteData = {
+          date: formatDateToISO(getVotingDate()),
           user_id: selectedUser,
-          date: dateString,
+          voted_by: loggedInUserId,
           choice: selectedVote as
             | "omnivora"
             | "vegetariana"
@@ -204,7 +197,7 @@ export default function VotarPage() {
   // Funcions per obtenir menús del dia de votació
   const getVotingMenus = (mealType: "dinar" | "sopar") => {
     return menus.filter(
-      (menu) => menu.day === votingDayInCatalan && menu.meal_type === mealType
+      (menu) => menu.day === getDayNameInCatalan(votingDate) && menu.meal_type === mealType
     );
   };
 
@@ -241,8 +234,27 @@ export default function VotarPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregant usuaris...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregant...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si el perfil no existeix a la taula users (p.ex. el trigger no s'ha executat)
+  if (!loggedInUser || !votingForUser) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="text-center max-w-sm bg-white rounded-xl shadow-sm p-8">
+          <p className="text-gray-700 mb-4">
+            No s&apos;ha trobat el teu perfil. Contacta amb l&apos;administrador.
+          </p>
+          <button
+            onClick={handleLogout}
+            className="text-orange-600 font-medium hover:text-orange-800"
+          >
+            Tancar sessió
+          </button>
         </div>
       </div>
     );
@@ -250,240 +262,280 @@ export default function VotarPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Header */}
-          <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle className="text-green-500" size={32} />
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-800">
-                    Votar per {isVotingForToday ? "Avui" : "Demà"}
-                  </h1>
-                  <p className="text-gray-600 flex items-center gap-2">
-                    <Calendar size={18} />
-                    {votingDateFormatted}
-                  </p>
-                  {isVotingForToday && (
-                    <p className="text-sm text-orange-600 mt-1">
-                      ⏰ Últimes hores per votar! (fins les 10:00 AM)
-                    </p>
-                  )}
-                </div>
-              </div>
+      <div className="container mx-auto px-4 py-6 max-w-2xl">
+
+        {/* ── Header: títol, data i selector dinar/sopar ── */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-4">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">
+                Votar per {votingForToday ? "Avui" : "Demà"}
+              </h1>
+              <p className="text-gray-500 text-sm flex items-center gap-1 mt-1">
+                <Calendar size={14} />
+                {votingDateFormatted}
+              </p>
+              {votingForToday && (
+                <p className="text-xs text-orange-600 mt-1">
+                  ⏰ Últimes hores! (fins les 10:00)
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
               <Link
                 href="/"
-                className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition-colors"
               >
-                <ArrowLeft size={18} />
-                Tornar
+                <ArrowLeft size={20} />
               </Link>
+              <button
+                onClick={handleLogout}
+                className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                title="Tancar sessió"
+              >
+                <LogOut size={20} />
+              </button>
             </div>
           </div>
 
-          {!selectedUser ? (
-            /* Selección de usuario */
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h2 className="text-xl font-bold text-gray-800 mb-6">
-                Selecciona el teu nom
+          {/* Selector dinar / sopar */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setSelectedMealType("dinar");
+                setSelectedVote("");
+                setIsVoteSubmitted(false);
+                setExistingVote(null);
+              }}
+              className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm ${
+                selectedMealType === "dinar"
+                  ? "bg-orange-500 text-white"
+                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+            >
+              🍽️ Dinar
+            </button>
+            <button
+              onClick={() => {
+                setSelectedMealType("sopar");
+                setSelectedVote("");
+                setIsVoteSubmitted(false);
+                setExistingVote(null);
+              }}
+              className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm ${
+                selectedMealType === "sopar" ? "text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              }`}
+              style={selectedMealType === "sopar" ? { backgroundColor: "#2a747f" } : {}}
+            >
+              🌙 Sopar
+            </button>
+          </div>
+        </div>
+
+        {/* ── Per qui votem ─────────────────────────────── */}
+        <div className="bg-white rounded-xl shadow-sm p-4 mb-4 flex items-center gap-3">
+          <div className="relative w-14 h-14 shrink-0">
+            <Image
+              src={getUserAvatarUrl(votingForUser)}
+              alt={votingForUser.name}
+              width={56}
+              height={56}
+              className="w-full h-full rounded-full object-cover border-2 border-orange-300"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = "/avatars/default.jpeg";
+              }}
+              unoptimized
+            />
+            {!isVotingForSelf && (
+              <div className="absolute -bottom-1 -right-1 bg-orange-500 rounded-full p-1">
+                <Users size={10} className="text-white" />
+              </div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            {isVotingForSelf ? (
+              <h2 className="text-lg font-bold text-gray-800">
+                Hola, {votingForUser.name}! 👋
               </h2>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {users.map((user) => (
+            ) : (
+              <>
+                <h2 className="text-lg font-bold text-gray-800 truncate">
+                  Votant per {votingForUser.name}
+                </h2>
+                <p className="text-sm text-gray-400">
+                  Enviat per {loggedInUser.name}
+                </p>
+              </>
+            )}
+          </div>
+          {!isVotingForSelf && (
+            <button
+              onClick={handleVoteSelf}
+              className="text-sm text-orange-500 hover:text-orange-700 font-medium shrink-0"
+            >
+              ← El meu vot
+            </button>
+          )}
+        </div>
+
+        {/* ── Menú + Formulari de votació ───────────────── */}
+        <div
+          className={`rounded-xl p-4 mb-4 ${
+            selectedMealType === "dinar"
+              ? "bg-yellow-50 border border-yellow-200"
+              : "bg-teal-50 border border-teal-200"
+          }`}
+        >
+          <h3 className="text-base font-semibold text-gray-800 mb-3">
+            📋 Opcions de {selectedMealType === "dinar" ? "dinar" : "sopar"} per{" "}
+            {votingForToday ? "avui" : "demà"}:
+          </h3>
+          {getVotingMenus(selectedMealType).length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
+              {getVotingMenus(selectedMealType).map((menu) => (
+                <div
+                  key={menu.id}
+                  className={`rounded-lg p-3 border text-sm ${
+                    selectedMealType === "dinar"
+                      ? "bg-yellow-100 border-yellow-200"
+                      : "bg-teal-100 border-teal-200"
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-gray-800">{menu.dish_name}</span>
+                    <span
+                      className={`px-2 py-0.5 rounded-full text-xs text-white shrink-0 ${getDietTypeColor(menu.diet_type)}`}
+                    >
+                      {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-sm mb-4">
+              No hi ha opcions de {selectedMealType} configurades per{" "}
+              {votingForToday ? "avui" : "demà"}.
+            </p>
+          )}
+
+          {!isVoteSubmitted ? (
+            <div>
+              <h3 className="text-base font-semibold text-gray-800 mb-3">
+                Què {isVotingForSelf ? "vols" : `vol ${votingForUser.name}`}{" "}
+                {selectedMealType === "dinar" ? "dinar" : "sopar"}{" "}
+                {votingForToday ? "avui" : "demà"}?
+              </h3>
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {voteOptions.map((option) => (
                   <button
-                    key={user.id}
-                    onClick={() => handleUserSelect(user.id)}
-                    className="p-4 bg-gray-50 rounded-lg border-2 border-transparent hover:border-orange-300 hover:bg-orange-50 transition-all focus:border-blue-500 focus:outline-none"
+                    key={option.value}
+                    onClick={() => setSelectedVote(option.value)}
+                    className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                      selectedVote === option.value
+                        ? `${option.color} text-white border-transparent`
+                        : selectedMealType === "dinar"
+                        ? "bg-yellow-100 text-gray-700 border-yellow-200 hover:border-yellow-300 hover:bg-yellow-200"
+                        : "bg-teal-100 text-gray-700 border-teal-200 hover:border-teal-300 hover:bg-teal-200"
+                    }`}
                   >
-                    <div className="flex flex-col items-center">
-                      {/* Avatar con fallback */}
-                      <div className="relative w-16 h-16 mb-3">
-                        <Image
-                          src={getUserAvatarUrl(user)}
-                          alt={`Avatar de ${user.name}`}
-                          width={64}
-                          height={64}
-                          className="w-full h-full rounded-full object-cover border-2 border-orange-300"
-                          onError={(e) => {
-                            // Fallback a imagen por defecto
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/avatars/default.jpeg';
-                          }}
-                          unoptimized={true}
-                          priority={false}
-                        />
-                      </div>
-                      <span className="text-sm font-medium text-gray-800 text-center">
-                        {user.name}
-                      </span>
-                      {user.is_admin && (
-                        <span className="text-xs text-orange-500 mt-1">
-                          Admin
-                        </span>
-                      )}
-                    </div>
+                    {option.label}
                   </button>
                 ))}
               </div>
+              <button
+                onClick={handleVoteSubmit}
+                disabled={!selectedVote || submitting}
+                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {submitting
+                  ? "Enviant..."
+                  : existingVote
+                  ? `Actualitzar elecció${!isVotingForSelf ? ` de ${votingForUser.name}` : ""}`
+                  : `Confirmar elecció${!isVotingForSelf ? ` per ${votingForUser.name}` : ""}`}
+              </button>
             </div>
           ) : (
-            /* Formulario de votación */
-            <div className="space-y-8">
-              {/* Información del usuario */}
-              <div className="bg-white rounded-lg shadow-lg p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-gray-800">
-                    Hola, {users.find((u) => u.id === selectedUser)?.name}! 👋
-                  </h2>
-                  <button
-                    onClick={() => setSelectedUser(null)}
-                    className="text-blue-500 hover:text-blue-700 text-sm font-medium"
-                  >
-                    Canviar usuari
-                  </button>
+            <div className="text-center py-6">
+              <div className="bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded-lg mb-3">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <CheckCircle size={18} />
+                  <span className="font-semibold">
+                    {existingVote ? "Vot actualitzat! ✅" : "Vot registrat! ✅"}
+                  </span>
                 </div>
-
-                {/* Selector de tipus de menjar */}
-                <div className="mb-6">
-                  <h3 className="text-lg font-semibold text-gray-800 mb-3">
-                    Tipus de menjar:
-                  </h3>
-                  <div className="flex gap-4">
-                    <button
-                      onClick={() => setSelectedMealType("dinar")}
-                      className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                        selectedMealType === "dinar"
-                          ? "bg-orange-500 text-white"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
-                    >
-                      🍽️ Dinar
-                    </button>
-                    <button
-                      onClick={() => setSelectedMealType("sopar")}
-                      className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                        selectedMealType === "sopar"
-                          ? "text-white"
-                          : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                      }`}
-                      style={
-                        selectedMealType === "sopar"
-                          ? { backgroundColor: "#2a747f" }
-                          : {}
-                      }
-                    >
-                      🌙 Sopar
-                    </button>
-                  </div>
-                </div>
+                <p className="text-sm">
+                  {isVotingForSelf
+                    ? `La teva elecció per ${votingForToday ? "avui" : "demà"} ha estat guardada.`
+                    : `L'elecció de ${votingForUser.name} per ${votingForToday ? "avui" : "demà"} ha estat guardada.`}
+                </p>
               </div>
+              <button
+                onClick={() => { setSelectedVote(""); setIsVoteSubmitted(false); }}
+                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+              >
+                Canviar elecció
+              </button>
+            </div>
+          )}
+        </div>
 
-              {/* Menú de demà */}
-              <div className={`rounded-lg p-4 mb-6 ${
-                        selectedMealType === 'dinar' 
-                          ? 'bg-yellow-50 border border-yellow-200' 
-                          : 'bg-teal-50 border border-teal-200'
-                      }`}>
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">
-                  📋 Opcions de{" "}
-                  {selectedMealType === "dinar" ? "dinar" : "sopar"} per {isVotingForToday ? "avui" : "demà"}:
-                </h3>
-                {getVotingMenus(selectedMealType).length > 0 ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
-                    {getVotingMenus(selectedMealType).map((menu) => (
-                      <div
-                        key={menu.id}
-                        className={`rounded-lg p-4 border ${
-                          selectedMealType === 'dinar'
-                            ? 'bg-yellow-100 border-yellow-200'
-                            : 'bg-teal-100 border-teal-200'
-                        }`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <h4 className="font-medium text-gray-800 text-sm">
-                            {menu.dish_name}
-                          </h4>
-                          <span
-                            className={`inline-block px-2 py-1 rounded-full text-xs text-white ${getDietTypeColor(
-                              menu.diet_type
-                            )}`}
-                          >
-                            {menu.diet_type.charAt(0).toUpperCase() +
-                              menu.diet_type.slice(1)}
-                          </span>
-                        </div>
+        {/* ── Votar per un company (acordió) ────────────── */}
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6">
+          <button
+            onClick={() => setIsColleagueExpanded(!isColleagueExpanded)}
+            className="w-full p-4 flex items-center justify-between text-left hover:bg-gray-50 transition-colors"
+          >
+            <span className="flex items-center gap-2 font-medium text-gray-700">
+              <Users size={18} className="text-orange-500" />
+              Votar per un company
+            </span>
+            <ChevronDown
+              size={18}
+              className={`text-gray-400 transition-transform duration-200 ${
+                isColleagueExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+
+          {isColleagueExpanded && (
+            <div className="px-4 pb-4 border-t border-gray-100 pt-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+                {users
+                  .filter((u) => u.id !== loggedInUserId)
+                  .map((user) => (
+                    <button
+                      key={user.id}
+                      onClick={() => handleColleagueSelect(user.id)}
+                      className={`p-2 rounded-lg border-2 transition-all flex flex-col items-center gap-1 ${
+                        selectedUser === user.id && !isVotingForSelf
+                          ? "border-orange-400 bg-orange-50"
+                          : "border-transparent bg-gray-50 hover:bg-orange-50 hover:border-orange-200"
+                      }`}
+                    >
+                      <div className="w-12 h-12">
+                        <Image
+                          src={getUserAvatarUrl(user)}
+                          alt={user.name}
+                          width={48}
+                          height={48}
+                          className="w-full h-full rounded-full object-cover border-2 border-orange-200"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/avatars/default.jpeg";
+                          }}
+                          unoptimized
+                        />
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-600 text-sm mb-6">
-                    No hi ha opcions de{" "}
-                    {selectedMealType === "dinar" ? "dinar" : "sopar"}{" "}
-                    configurades per {isVotingForToday ? "avui" : "demà"}.
-                  </p>
-                )}
-
-                {!isVoteSubmitted ? (
-                  <div>
-                    <h3 className="text-xl font-semibold text-gray-800 mb-4">
-                      Què vols{" "}
-                      {selectedMealType === "dinar" ? "dinar" : "sopar"} {isVotingForToday ? "avui" : "demà"}?
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                      {voteOptions.map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => setSelectedVote(option.value)}
-                          className={`p-4 rounded-lg border-2 transition-all ${
-                            selectedVote === option.value
-                              ? `${option.color} text-white border-transparent`
-                              : selectedMealType === 'dinar'
-                              ? "bg-yellow-100 text-gray-700 border-yellow-200 hover:border-yellow-300 hover:bg-yellow-200"
-                              : "bg-teal-100 text-gray-700 border-teal-200 hover:border-teal-300 hover:bg-teal-200"
-                          }`}
-                        >
-                          <span className="font-medium">{option.label}</span>
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={handleVoteSubmit}
-                      disabled={!selectedVote || submitting}
-                      className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-                    >
-                      {submitting
-                        ? "Enviant..."
-                        : existingVote
-                        ? "Actualitzar la meva elecció"
-                        : "Confirmar la meva elecció"}
+                      <span className="text-xs font-medium text-gray-700 text-center leading-tight">
+                        {user.name.split(" ")[0]}
+                      </span>
                     </button>
-                  </div>
-                ) : (
-                  <div className="text-center py-8">
-                    <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4">
-                      <h3 className="font-semibold">
-                        {existingVote
-                          ? "¡Vot actualitzat correctament! ✅"
-                          : "¡Vot registrat correctament! ✅"}
-                      </h3>
-                      <p>La teva elecció per {isVotingForToday ? "avui" : "demà"} ha estat guardada.</p>
-                    </div>
-                    <button
-                      onClick={() => {
-                        setSelectedVote("");
-                        setIsVoteSubmitted(false);
-                      }}
-                      className="text-blue-600 hover:text-blue-800 font-medium"
-                    >
-                      Canviar el meu vot
-                    </button>
-                  </div>
-                )}
+                  ))}
               </div>
             </div>
           )}
         </div>
+
       </div>
     </div>
   );

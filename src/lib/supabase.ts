@@ -1,13 +1,19 @@
-import { createClient } from '@/lib/supabase-auth'
+import { createClient } from '@/lib/supabase-browser'
 
-// Usar la instancia única para evitar múltiples clientes
-export const supabase = createClient()
-export const supabaseAuth = createClient()
+/**
+ * Client singleton per a operacions des del navegador.
+ * 
+ * NOTA: Totes les funcions d'aquest fitxer utilitzen el client del navegador.
+ * Quan convertim pàgines a Server Components, crearem versions server-side
+ * d'aquestes funcions que utilitzin supabase-server.ts en comptes d'aquesta.
+ */
+const supabase = createClient()
 
 // Tipus per a les nostres taules de base de dades
 export interface User {
   id: string
   name: string
+  email?: string
   is_admin: boolean
   created_at: string
 }
@@ -24,8 +30,9 @@ export interface Menu {
 export interface Vote {
   id: string
   user_id: string
+  voted_by?: string | null
   date: string
-  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'  
+  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'
   meal_type: 'dinar' | 'sopar'
   created_at: string
   updated_at: string
@@ -89,7 +96,7 @@ export async function createMenu(menu: Omit<Menu, 'id' | 'created_at'>) {
     created_at: new Date().toISOString()
   }
   
-  const { data, error } = await supabaseAuth
+  const { data, error } = await supabase
     .from('menus')
     .insert([menuWithTimestamp])
     .select()
@@ -102,7 +109,7 @@ export async function createMenu(menu: Omit<Menu, 'id' | 'created_at'>) {
 }
 
 export async function updateMenu(menuId: string, updates: Partial<Menu>) {
-  const { data, error } = await supabaseAuth
+  const { data, error } = await supabase
     .from('menus')
     .update(updates)
     .eq('id', menuId)
@@ -117,7 +124,7 @@ export async function updateMenu(menuId: string, updates: Partial<Menu>) {
 }
 
 export async function deleteMenu(menuId: string) {
-  const { error } = await supabaseAuth
+  const { error } = await supabase
     .from('menus')
     .delete()
     .eq('id', menuId)
@@ -165,6 +172,18 @@ export async function getVotesByDate(date: string) {
   return data || []
 }
 
+// Retorna els usuaris que NO han votat per a una data concreta
+export async function getNotVotedUsers(date: string): Promise<{ id: string; name: string }[]> {
+  const [{ data: allUsers }, { data: votes }] = await Promise.all([
+    supabase.from('users').select('id, name').order('name'),
+    supabase.from('votes').select('user_id').eq('date', date),
+  ])
+
+  if (!allUsers) return []
+  const votedIds = new Set(votes?.map((v: { user_id: string }) => v.user_id) || [])
+  return allUsers.filter((u: { id: string; name: string }) => !votedIds.has(u.id))
+}
+
 // Nueva función para obtener estadísticas de votos
 export async function getVoteStats(date: string) {
   const { data, error } = await supabase
@@ -172,7 +191,7 @@ export async function getVoteStats(date: string) {
     .select(`
       choice,
       meal_type,
-      users(name)
+      voter:users!votes_user_id_fkey(name)
     `)
     .eq('date', date)
   
@@ -187,10 +206,10 @@ export async function getVoteStats(date: string) {
     sopar: {} as Record<string, { count: number; users: string[] }>
   }
 
-  data?.forEach((vote: { choice: string; meal_type: string; users: { name: string } | null }) => {
+  data?.forEach((vote: { choice: string; meal_type: string; voter: { name: string } | null }) => {
     const mealType = vote.meal_type as 'dinar' | 'sopar'
     const choice = vote.choice
-    const userName = vote.users?.name || 'Usuario desconocido'
+    const userName = vote.voter?.name || 'Usuari desconegut'
 
     if (!stats[mealType][choice]) {
       stats[mealType][choice] = { count: 0, users: [] }

@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2 } from 'lucide-react'
+import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2, Users, UserPlus, Shield, Mail, UserX, Bell } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@/lib/supabase-auth'
+import { createClient } from '@/lib/supabase-browser'
 import type { Session, User } from '@supabase/supabase-js'
 import { 
   getMenus, 
@@ -11,11 +11,14 @@ import {
   updateMenu, 
   deleteMenu,
   getVoteStats,
-  type Menu 
+  getNotVotedUsers,
+  type Menu,
+  type User as AppUser,
 } from '@/lib/supabase'
+import { getResultsDate, formatDateToISO, formatDateToCatalan } from '@/lib/dates'
 
 export default function AdminPage() {
-  const [selectedTab, setSelectedTab] = useState<'menus' | 'votes'>('menus')
+  const [selectedTab, setSelectedTab] = useState<'menus' | 'votes' | 'usuaris'>('menus')
   const [menus, setMenus] = useState<Menu[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -23,19 +26,7 @@ export default function AdminPage() {
   const [user, setUser] = useState<User | null>(null)
   const [authLoading, setAuthLoading] = useState(true)
   
-  // Obtener fecha de hoy para ver resultados del día actual (para organizar mesas)
-  const getTodayDate = () => {
-    const today = new Date();
-    // Asegurar que trabajamos con la fecha local
-    const localToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    return localToday;
-  };
-
-  const today = getTodayDate();
-  // Crear string de fecha en formato YYYY-MM-DD sin zona horaria
-  const todayString = today.getFullYear() + '-' + 
-    String(today.getMonth() + 1).padStart(2, '0') + '-' + 
-    String(today.getDate()).padStart(2, '0');
+  const todayString = formatDateToISO(getResultsDate());
   
   interface VoteStats {
     [meal_type: string]: {
@@ -49,9 +40,21 @@ export default function AdminPage() {
   const [voteStats, setVoteStats] = useState<VoteStats | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>(todayString)
   const [loadingVotes, setLoadingVotes] = useState(false)
+  const [notVotedUsers, setNotVotedUsers] = useState<{ id: string; name: string }[]>([])
+  const [sendingReminder, setSendingReminder] = useState(false)
+  const [reminderResult, setReminderResult] = useState<string | null>(null)
   
   const router = useRouter()
   const supabase = createClient()
+
+  // ── Estat: gestió d'usuaris ─────────────────────────────────────────────────
+  const [appUsers, setAppUsers] = useState<AppUser[]>([])
+  const [usersLoading, setUsersLoading] = useState(false)
+  const [showInviteForm, setShowInviteForm] = useState(false)
+  const [editingUser, setEditingUser] = useState<AppUser | null>(null)
+  const [inviteForm, setInviteForm] = useState({ name: '', email: '', is_admin: false })
+  const [inviteSending, setInviteSending] = useState(false)
+  const [usersMsg, setUsersMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   
   // Referencia para el formulario de edición
   const formRef = useRef<HTMLDivElement>(null)
@@ -76,12 +79,35 @@ export default function AdminPage() {
     }
   }, [])
 
-  // Función para cargar estadísticas de votos
+  const handleSendReminder = async () => {
+    if (!notVotedUsers.length) return
+    setSendingReminder(true)
+    setReminderResult(null)
+    try {
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: notVotedUsers.map((u) => u.id) }),
+      })
+      const data = await res.json()
+      setReminderResult(`✅ Recordatori enviat a ${data.sent} dispositiu${data.sent !== 1 ? 's' : ''}`)
+    } catch {
+      setReminderResult('❌ Error enviant el recordatori')
+    } finally {
+      setSendingReminder(false)
+    }
+  }
+
+  // Función para cargar estadísticas de votos i qui no ha votat (en paral·lel)
   const loadVoteStats = useCallback(async (date: string) => {
     setLoadingVotes(true)
     try {
-      const stats = await getVoteStats(date)
+      const [stats, notVoted] = await Promise.all([
+        getVoteStats(date),
+        getNotVotedUsers(date),
+      ])
       setVoteStats(stats)
+      setNotVotedUsers(notVoted)
     } catch (error) {
       console.error('Error carregant estadístiques de vots:', error)
     } finally {
@@ -132,6 +158,29 @@ export default function AdminPage() {
       loadVoteStats(selectedDate)
     }
   }, [selectedTab, selectedDate, user, loadVoteStats])
+
+  // Carrega la llista d'usuaris cridant la nostra API Route (servidor).
+  // useCallback aquí (no al final) perquè els Hooks sempre han d'estar
+  // al màxim nivell del component, mai després d'un 'return' anticipat.
+  const loadAppUsers = useCallback(async () => {
+    setUsersLoading(true)
+    try {
+      const res = await fetch('/api/admin/users')
+      const data = await res.json()
+      setAppUsers(data)
+    } catch (e) {
+      console.error('Error carregant usuaris:', e)
+    } finally {
+      setUsersLoading(false)
+    }
+  }, [])
+
+  // appUsers.length === 0 evita tornar a carregar si ja els tenim.
+  useEffect(() => {
+    if (selectedTab === 'usuaris' && appUsers.length === 0) {
+      loadAppUsers()
+    }
+  }, [selectedTab, appUsers.length, loadAppUsers])
 
   // Cerrar sesión
   const handleLogout = async () => {
@@ -227,21 +276,76 @@ export default function AdminPage() {
     }
   }
 
+  // ── Handlers: gestió d'usuaris ───────────────────────────────────────────────
+
+  // Envia el formulari de convit a l'API Route.
+  // L'API crida inviteUserByEmail de Supabase → l'usuari rep un email.
+  const handleInviteUser = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setInviteSending(true)
+    setUsersMsg(null)
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(inviteForm),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+      setUsersMsg({ type: 'ok', text: `✅ Invitació enviada a ${inviteForm.email}!` })
+      setInviteForm({ name: '', email: '', is_admin: false })
+      setShowInviteForm(false)
+      await loadAppUsers()
+    } catch (e: unknown) {
+      setUsersMsg({ type: 'err', text: e instanceof Error ? e.message : 'Error enviant invitació' })
+    } finally {
+      setInviteSending(false)
+    }
+  }
+
+  // Desa els canvis de nom o rol cridant PATCH a l'API Route.
+  const handleUpdateUser = async (u: AppUser) => {
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: u.id, name: u.name, is_admin: u.is_admin }),
+      })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error)
+      }
+      setEditingUser(null)
+      await loadAppUsers()
+    } catch (e) {
+      console.error('Error actualitzant usuari:', e)
+    }
+  }
+
+  // Elimina l'usuari cridant DELETE a l'API Route.
+  // La FK ON DELETE CASCADE elimina de public.users i tots els seus vots.
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!confirm(`Segur que vols eliminar ${userName}?\nTots els seus vots s'eliminaran.`)) return
+    try {
+      const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const d = await res.json()
+        throw new Error(d.error)
+      }
+      await loadAppUsers()
+    } catch (e) {
+      console.error('Error eliminant usuari:', e)
+    }
+  }
+
   // Generar resumen para compartir con el restaurante
   const generateSummary = () => {
     if (!voteStats) return ''
     
-    // Crear fecha local sin problemas de zona horaria
     const [year, month, day] = selectedDate.split('-').map(Number);
-    const date = new Date(year, month - 1, day);
+    const formattedDate = formatDateToCatalan(new Date(year, month - 1, day));
     
-    const formatDate = date.toLocaleDateString('ca-ES', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long'
-    })
-    
-    let summary = `📋 Resum per ${formatDate}\n\n`
+    let summary = `📋 Resum per ${formattedDate}\n\n`
     
     Object.entries(voteStats).forEach(([mealType, choices]) => {
       if (Object.keys(choices).length === 0) return
@@ -347,6 +451,17 @@ export default function AdminPage() {
             >
               <BarChart3 className="inline mr-2" size={18} />
               Resultats de Vots
+            </button>
+            <button
+              onClick={() => setSelectedTab('usuaris')}
+              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
+                selectedTab === 'usuaris'
+                  ? 'border-orange-500 text-orange-600'
+                  : 'border-transparent text-gray-600 hover:text-gray-800'
+              }`}
+            >
+              <Users className="inline mr-2" size={18} />
+              Usuaris
             </button>
           </div>
         </div>
@@ -564,6 +679,193 @@ export default function AdminPage() {
           </div>
         )}
 
+        {selectedTab === 'usuaris' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+
+            {/* Capçalera del tab */}
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-gray-800">Gestió d&apos;Usuaris</h2>
+              <button
+                onClick={() => { setShowInviteForm(!showInviteForm); setUsersMsg(null) }}
+                className="flex items-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                <UserPlus size={18} />
+                Convidar Usuari
+              </button>
+            </div>
+
+            {/* Missatge d'èxit o error */}
+            {usersMsg && (
+              <div className={`mb-4 px-4 py-3 rounded-lg text-sm ${
+                usersMsg.type === 'ok'
+                  ? 'bg-green-100 border border-green-300 text-green-700'
+                  : 'bg-red-100 border border-red-300 text-red-700'
+              }`}>
+                {usersMsg.text}
+              </div>
+            )}
+
+            {/* Formulari de convit */}
+            {showInviteForm && (
+              <div className="bg-orange-50 border-2 border-orange-200 rounded-lg p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                  <Mail size={20} className="text-orange-500" />
+                  Convidar nou usuari
+                </h3>
+                <form onSubmit={handleInviteUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+                    <input
+                      type="text"
+                      value={inviteForm.name}
+                      onChange={(e) => setInviteForm({ ...inviteForm, name: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-700"
+                      placeholder="Ex: Jordi Garcia"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={inviteForm.email}
+                      onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 text-gray-700"
+                      placeholder="jordi@empresa.com"
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="invite_is_admin"
+                      checked={inviteForm.is_admin}
+                      onChange={(e) => setInviteForm({ ...inviteForm, is_admin: e.target.checked })}
+                      className="w-4 h-4 text-orange-500 rounded"
+                    />
+                    <label htmlFor="invite_is_admin" className="text-sm font-medium text-gray-700">
+                      Rol d&apos;administrador
+                    </label>
+                  </div>
+                  <div className="flex gap-3 md:col-span-2">
+                    <button
+                      type="submit"
+                      disabled={inviteSending}
+                      className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 disabled:bg-gray-300 transition-colors"
+                    >
+                      <Mail size={18} />
+                      {inviteSending ? 'Enviant...' : 'Enviar invitació'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowInviteForm(false); setUsersMsg(null) }}
+                      className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                    >
+                      <X size={18} />
+                      Cancel·lar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* Llista d'usuaris */}
+            {usersLoading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Carregant usuaris...</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {appUsers.length === 0 ? (
+                  <p className="text-gray-600 text-center py-8">No hi ha usuaris registrats.</p>
+                ) : (
+                  appUsers.map((u) => (
+                    <div
+                      key={u.id}
+                      className={`flex items-center p-4 rounded-lg border transition-all ${
+                        editingUser?.id === u.id
+                          ? 'bg-orange-50 border-orange-300 shadow-md'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      {editingUser?.id === u.id ? (
+                        // ── Mode edició inline ───────────────────────────────────
+                        <form
+                          onSubmit={(e) => { e.preventDefault(); handleUpdateUser(editingUser) }}
+                          className="flex flex-1 items-center gap-3 flex-wrap"
+                        >
+                          <input
+                            type="text"
+                            value={editingUser.name}
+                            onChange={(e) => setEditingUser({ ...editingUser, name: e.target.value })}
+                            className="px-3 py-1.5 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 text-gray-700"
+                            required
+                          />
+                          <label className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="checkbox"
+                              checked={editingUser.is_admin}
+                              onChange={(e) => setEditingUser({ ...editingUser, is_admin: e.target.checked })}
+                              className="w-4 h-4 text-orange-500"
+                            />
+                            Admin
+                          </label>
+                          <div className="flex gap-2 ml-auto">
+                            <button type="submit" className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors" title="Desar">
+                              <Save size={16} />
+                            </button>
+                            <button type="button" onClick={() => setEditingUser(null)} className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors" title="Cancel·lar">
+                              <X size={16} />
+                            </button>
+                          </div>
+                        </form>
+                      ) : (
+                        // ── Mode lectura ─────────────────────────────────────────
+                        <>
+                          <div className="flex items-center gap-3 flex-1">
+                            <div className="w-9 h-9 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-sm shrink-0">
+                              {u.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-800">{u.name}</span>
+                                {u.is_admin && (
+                                  <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs rounded-full font-medium flex items-center gap-1">
+                                    <Shield size={10} />
+                                    Admin
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-sm text-gray-500">{u.email}</span>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => setEditingUser(u)}
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
+                              title="Editar usuari"
+                            >
+                              <Edit size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(u.id, u.name)}
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                              title="Eliminar usuari"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
         {selectedTab === 'votes' && (
           <div className="bg-white rounded-lg shadow-lg p-6">
             <div className="flex items-center justify-between mb-6">
@@ -592,7 +894,7 @@ export default function AdminPage() {
               <div className="space-y-8">
                 {/* Resumen para compartir */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 ">
-                  <div className="flex items-center justify-between mb-3 flex flex-wrap ">
+                  <div className="flex flex-wrap items-center justify-between mb-3">
                     <h4 className="font-semibold text-blue-800 flex items-center gap-2">
                       <Share2 size={18} />
                       Resum dels vots per restaurant
@@ -683,6 +985,54 @@ export default function AdminPage() {
                 <p className="text-sm text-gray-500 mt-2">
                   Prova amb una altra data o assegura&apos;t que hi hagi menús disponibles.
                 </p>
+              </div>
+            )}
+
+            {/* Qui no ha votat */}
+            {!loadingVotes && (
+              <div className="mt-8 border-t border-gray-200 pt-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <UserX size={20} className="text-red-500" />
+                    Qui no ha votat
+                    {notVotedUsers.length > 0 && (
+                      <span className="ml-1 px-2 py-0.5 bg-red-100 text-red-700 text-sm rounded-full font-medium">
+                        {notVotedUsers.length}
+                      </span>
+                    )}
+                  </h3>
+                  {notVotedUsers.length > 0 && (
+                    <button
+                      onClick={handleSendReminder}
+                      disabled={sendingReminder}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                    >
+                      <Bell size={14} />
+                      {sendingReminder ? 'Enviant...' : 'Enviar recordatori'}
+                    </button>
+                  )}
+                </div>
+                {reminderResult && (
+                  <p className="text-sm mb-3 text-gray-700">{reminderResult}</p>
+                )}
+
+                {notVotedUsers.length === 0 ? (
+                  <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm">
+                    ✅ Tothom ha votat per aquesta data!
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {notVotedUsers.map((u) => (
+                      <span
+                        key={u.id}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 border border-red-200 text-red-700 rounded-full text-sm font-medium"
+                      >
+                        <UserX size={12} />
+                        {u.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>

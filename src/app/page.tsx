@@ -1,32 +1,24 @@
-'use client'
-
-import { useEffect } from 'react'
+/**
+ * PÀGINA PRINCIPAL - Server Component
+ * 
+ * ABANS: Era 'use client' amb un useEffect que feia un ping a Supabase
+ * sense cap utilitat visible. Tot el HTML es generava al navegador.
+ * 
+ * ARA: És un Server Component. El HTML es genera al SERVIDOR i arriba
+ * al navegador ja pintat. Més ràpid, menys JS descarregat.
+ * 
+ * Per què podem fer-ho? Perquè aquesta pàgina NO té:
+ * - useState (no hi ha estat interactiu)
+ * - onClick (no hi ha botons amb accions)
+ * - useEffect (no hi ha efectes secundaris)
+ * Només mostra contingut estàtic i links.
+ */
 import { ChefHat, CheckCircle, BarChart3, Settings, Utensils } from 'lucide-react'
 import Link from 'next/link'
-import { getUsers } from '@/lib/supabase'
+import { getTomorrow, formatDateToCatalan } from '@/lib/dates'
 
 export default function Home() {
-  // Obtener información básica
-  useEffect(() => {
-    loadStats()
-  }, [])
-
-  const loadStats = async () => {
-    try {
-      await getUsers() // Solo verificamos la conexión
-    } catch (error) {
-      console.error('Error carregant estadístiques:', error)
-    }
-  }
-
-  // Obtenir la data de demà
-  const tomorrow = new Date()
-  tomorrow.setDate(tomorrow.getDate() + 1)
-  const tomorrowFormatted = tomorrow.toLocaleDateString('ca-ES', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long'
-  })
+  const tomorrowFormatted = formatDateToCatalan(getTomorrow())
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50">
