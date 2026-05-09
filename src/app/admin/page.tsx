@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2, Users, UserPlus, Shield, Mail, UserX } from 'lucide-react'
+import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2, Users, UserPlus, Shield, Mail, UserX, Bell } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import type { Session, User } from '@supabase/supabase-js'
@@ -41,6 +41,8 @@ export default function AdminPage() {
   const [selectedDate, setSelectedDate] = useState<string>(todayString)
   const [loadingVotes, setLoadingVotes] = useState(false)
   const [notVotedUsers, setNotVotedUsers] = useState<{ id: string; name: string }[]>([])
+  const [sendingReminder, setSendingReminder] = useState(false)
+  const [reminderResult, setReminderResult] = useState<string | null>(null)
   
   const router = useRouter()
   const supabase = createClient()
@@ -76,6 +78,25 @@ export default function AdminPage() {
       setLoading(false)
     }
   }, [])
+
+  const handleSendReminder = async () => {
+    if (!notVotedUsers.length) return
+    setSendingReminder(true)
+    setReminderResult(null)
+    try {
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: notVotedUsers.map((u) => u.id) }),
+      })
+      const data = await res.json()
+      setReminderResult(`✅ Recordatori enviat a ${data.sent} dispositiu${data.sent !== 1 ? 's' : ''}`)
+    } catch {
+      setReminderResult('❌ Error enviant el recordatori')
+    } finally {
+      setSendingReminder(false)
+    }
+  }
 
   // Función para cargar estadísticas de votos i qui no ha votat (en paral·lel)
   const loadVoteStats = useCallback(async (date: string) => {
@@ -970,15 +991,30 @@ export default function AdminPage() {
             {/* Qui no ha votat */}
             {!loadingVotes && (
               <div className="mt-8 border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <UserX size={20} className="text-red-500" />
-                  Qui no ha votat
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                    <UserX size={20} className="text-red-500" />
+                    Qui no ha votat
+                    {notVotedUsers.length > 0 && (
+                      <span className="ml-1 px-2 py-0.5 bg-red-100 text-red-700 text-sm rounded-full font-medium">
+                        {notVotedUsers.length}
+                      </span>
+                    )}
+                  </h3>
                   {notVotedUsers.length > 0 && (
-                    <span className="ml-1 px-2 py-0.5 bg-red-100 text-red-700 text-sm rounded-full font-medium">
-                      {notVotedUsers.length}
-                    </span>
+                    <button
+                      onClick={handleSendReminder}
+                      disabled={sendingReminder}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-orange-500 text-white rounded-lg text-sm hover:bg-orange-600 disabled:opacity-50 transition-colors"
+                    >
+                      <Bell size={14} />
+                      {sendingReminder ? 'Enviant...' : 'Enviar recordatori'}
+                    </button>
                   )}
-                </h3>
+                </div>
+                {reminderResult && (
+                  <p className="text-sm mb-3 text-gray-700">{reminderResult}</p>
+                )}
 
                 {notVotedUsers.length === 0 ? (
                   <div className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm">
