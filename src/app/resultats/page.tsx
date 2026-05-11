@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { BarChart3, Calendar, ArrowLeft, UserX } from "lucide-react";
 import Link from "next/link";
-import { getVoteStats, getNotVotedUsers } from "@/lib/supabase";
+import { getVoteStats, getNotVotedUsers, getAppSettings } from "@/lib/supabase";
 import { getResultsDate, formatDateToISO, formatDateToCatalan } from "@/lib/dates";
 
 interface VoteStats {
@@ -22,7 +22,9 @@ export default function ResultatsPage() {
   const [notVotedUsers, setNotVotedUsers] = useState<{ id: string; name: string }[]>([]);
 
   useEffect(() => {
-    setSelectedDate(formatDateToISO(getResultsDate()));
+    getAppSettings().then((s) => {
+      setSelectedDate(formatDateToISO(getResultsDate(s.results_cutoff_hour)));
+    });
   }, []);
 
   // Cargar estadísticas cuando cambie la fecha

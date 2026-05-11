@@ -237,6 +237,31 @@ export async function getUserVoteForDate(userId: string, date: string, mealType:
   return data
 }
 
+// Configuració de l'app (deadlines, etc.)
+export interface AppSettings {
+  voting_cutoff_hour: number
+  results_cutoff_hour: number
+}
+
+export async function getAppSettings(): Promise<AppSettings> {
+  const { data } = await supabase.from('settings').select('key, value')
+  const map = Object.fromEntries((data || []).map((r: { key: string; value: string }) => [r.key, r.value]))
+  return {
+    voting_cutoff_hour: parseInt(map.voting_cutoff_hour ?? '10'),
+    results_cutoff_hour: parseInt(map.results_cutoff_hour ?? '22'),
+  }
+}
+
+export async function updateAppSetting(key: string, value: string) {
+  const { error } = await supabase
+    .from('settings')
+    .upsert({ key, value, updated_at: new Date().toISOString() })
+  if (error) {
+    console.error('Error actualitzant configuració:', error)
+    throw error
+  }
+}
+
 export async function updateVote(voteId: string, updates: Partial<Vote>) {
   const updatesWithTimestamp = {
     ...updates,

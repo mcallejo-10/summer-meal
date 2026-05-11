@@ -44,9 +44,9 @@ export function getTomorrow(): Date {
  * - Abans de les 10h → avui (última oportunitat!)
  * - A partir de les 10h → demà
  */
-export function getVotingDate(): Date {
+export function getVotingDate(cutoffHour = VOTING_CUTOFF_HOUR): Date {
   const targetDate = getLocalToday()
-  if (new Date().getHours() >= VOTING_CUTOFF_HOUR) {
+  if (new Date().getHours() >= cutoffHour) {
     targetDate.setDate(targetDate.getDate() + 1)
   }
   return targetDate
@@ -55,8 +55,8 @@ export function getVotingDate(): Date {
 /**
  * Retorna true si estem en el període de votar per avui (abans de les 10h).
  */
-export function isVotingForToday(): boolean {
-  return new Date().getHours() < VOTING_CUTOFF_HOUR
+export function isVotingForToday(cutoffHour = VOTING_CUTOFF_HOUR): boolean {
+  return new Date().getHours() < cutoffHour
 }
 
 /**
@@ -64,9 +64,9 @@ export function isVotingForToday(): boolean {
  * - Abans de les 22h → avui (el sopar encara no ha acabat)
  * - A partir de les 22h → demà (el sopar ja ha passat, la gent ja vota per demà)
  */
-export function getResultsDate(): Date {
+export function getResultsDate(cutoffHour = RESULTS_CUTOFF_HOUR): Date {
   const targetDate = getLocalToday()
-  if (new Date().getHours() >= RESULTS_CUTOFF_HOUR) {
+  if (new Date().getHours() >= cutoffHour) {
     targetDate.setDate(targetDate.getDate() + 1)
   }
   return targetDate
