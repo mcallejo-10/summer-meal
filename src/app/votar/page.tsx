@@ -182,7 +182,8 @@ export default function VotarPage() {
           meal_type: selectedMealType,
         };
 
-        await createVote(voteData);
+        const newVote = await createVote(voteData);
+        if (newVote) setExistingVote(newVote as Vote);
       }
 
       setIsVoteSubmitted(true);
