@@ -12,6 +12,7 @@ import {
   createVote,
   getUserVoteForDate,
   updateVote,
+  getAppSettings,
   type User as UserType,
   type Vote,
   type Menu,
@@ -23,6 +24,7 @@ import {
   formatDateToISO,
   formatDateToCatalan,
   getDayNameInCatalan,
+  VOTING_CUTOFF_HOUR,
 } from "@/lib/dates";
 
 const supabase = createClient();
@@ -54,9 +56,10 @@ export default function VotarPage() {
   const [submitting, setSubmitting] = useState(false);
   const [existingVote, setExistingVote] = useState<Vote | null>(null);
   const [isColleagueExpanded, setIsColleagueExpanded] = useState(false);
+  const [votingCutoff, setVotingCutoff] = useState(VOTING_CUTOFF_HOUR);
 
-  const votingDate = getVotingDate();
-  const votingForToday = isVotingForToday();
+  const votingDate = getVotingDate(votingCutoff);
+  const votingForToday = isVotingForToday(votingCutoff);
   const votingDateFormatted = formatDateToCatalan(votingDate, {
     weekday: "long",
     year: "numeric",
@@ -73,14 +76,17 @@ export default function VotarPage() {
         { data: { user } },
         usersData,
         menusData,
+        settings,
       ] = await Promise.all([
         supabase.auth.getUser(),
         getUsers(),
         getMenus(),
+        getAppSettings(),
       ]);
 
       setUsers(usersData);
       setMenus(menusData);
+      setVotingCutoff(settings.voting_cutoff_hour);
 
       if (user) {
         setLoggedInUserId(user.id);
@@ -157,17 +163,14 @@ export default function VotarPage() {
     try {
       if (existingVote) {
         // Actualitzar vot existent
-        const updateData = {
+        await updateVote(existingVote.id, {
           choice: selectedVote as
             | "omnivora"
             | "vegetariana"
             | "vegana"
             | "porto_el_meu_menjar"
             | "no_vindré",
-          updated_at: new Date().toISOString(),
-        };
-
-        await updateVote(existingVote.id, updateData);
+        });
       } else {
         const voteData = {
           date: formatDateToISO(getVotingDate()),
@@ -182,7 +185,8 @@ export default function VotarPage() {
           meal_type: selectedMealType,
         };
 
-        await createVote(voteData);
+        const newVote = await createVote(voteData);
+        if (newVote) setExistingVote(newVote as Vote);
       }
 
       setIsVoteSubmitted(true);

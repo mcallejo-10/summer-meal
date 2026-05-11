@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2, Users, UserPlus, Shield, Mail, UserX, Bell } from 'lucide-react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2, Users, UserPlus, Shield, Mail, UserX, Bell, Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import type { Session, User } from '@supabase/supabase-js'
@@ -12,13 +12,15 @@ import {
   deleteMenu,
   getVoteStats,
   getNotVotedUsers,
+  getAppSettings,
+  updateAppSetting,
   type Menu,
   type User as AppUser,
 } from '@/lib/supabase'
 import { getResultsDate, formatDateToISO, formatDateToCatalan } from '@/lib/dates'
 
 export default function AdminPage() {
-  const [selectedTab, setSelectedTab] = useState<'menus' | 'votes' | 'usuaris'>('menus')
+  const [selectedTab, setSelectedTab] = useState<'menus' | 'votes' | 'usuaris' | 'config'>('menus')
   const [menus, setMenus] = useState<Menu[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
@@ -43,6 +45,9 @@ export default function AdminPage() {
   const [notVotedUsers, setNotVotedUsers] = useState<{ id: string; name: string }[]>([])
   const [sendingReminder, setSendingReminder] = useState(false)
   const [reminderResult, setReminderResult] = useState<string | null>(null)
+  const [configSettings, setConfigSettings] = useState({ voting_cutoff_hour: 10, results_cutoff_hour: 22 })
+  const [savingConfig, setSavingConfig] = useState(false)
+  const [configMsg, setConfigMsg] = useState<string | null>(null)
   
   const router = useRouter()
   const supabase = createClient()
@@ -78,6 +83,31 @@ export default function AdminPage() {
       setLoading(false)
     }
   }, [])
+
+  const loadConfig = useCallback(async () => {
+    const s = await getAppSettings()
+    setConfigSettings(s)
+  }, [])
+
+  useEffect(() => {
+    if (selectedTab === 'config') loadConfig()
+  }, [selectedTab, loadConfig])
+
+  const handleSaveConfig = async () => {
+    setSavingConfig(true)
+    setConfigMsg(null)
+    try {
+      await Promise.all([
+        updateAppSetting('voting_cutoff_hour', String(configSettings.voting_cutoff_hour)),
+        updateAppSetting('results_cutoff_hour', String(configSettings.results_cutoff_hour)),
+      ])
+      setConfigMsg('✅ Configuració guardada')
+    } catch {
+      setConfigMsg('❌ Error guardant la configuració')
+    } finally {
+      setSavingConfig(false)
+    }
+  }
 
   const handleSendReminder = async () => {
     if (!notVotedUsers.length) return
@@ -429,40 +459,25 @@ export default function AdminPage() {
           </div>
 
           {/* Pestañas de navegación */}
-          <div className="flex gap-4 border-b border-gray-200">
-            <button
-              onClick={() => setSelectedTab('menus')}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-                selectedTab === 'menus'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <ChefHat className="inline mr-2" size={18} />
-              Gestió de Menús
-            </button>
-            <button
-              onClick={() => setSelectedTab('votes')}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-                selectedTab === 'votes'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <BarChart3 className="inline mr-2" size={18} />
-              Resultats de Vots
-            </button>
-            <button
-              onClick={() => setSelectedTab('usuaris')}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-                selectedTab === 'usuaris'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Users className="inline mr-2" size={18} />
-              Usuaris
-            </button>
+          <div className="flex gap-1 sm:gap-4 border-b border-gray-200 overflow-x-auto scrollbar-hide">
+            {([
+              { id: 'menus', icon: <ChefHat size={16} />, label: 'Menús' },
+              { id: 'votes', icon: <BarChart3 size={16} />, label: 'Resultats' },
+              { id: 'usuaris', icon: <Users size={16} />, label: 'Usuaris' },
+              { id: 'config', icon: <Settings size={16} />, label: 'Config' },
+            ] as { id: 'menus'|'votes'|'usuaris'|'config'; icon: React.ReactNode; label: string }[]).map(({ id, icon, label }) => (
+              <button
+                key={id}
+                onClick={() => setSelectedTab(id)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  selectedTab === id
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                {icon}{label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -863,6 +878,62 @@ export default function AdminPage() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {selectedTab === 'config' && (
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+              <Clock size={22} className="text-orange-500" />
+              Configuració de Deadlines
+            </h2>
+
+            <div className="space-y-6 max-w-sm">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  ⏰ Hora límit de votació
+                </label>
+                <p className="text-xs text-gray-600 mb-2">Abans d&apos;aquesta hora es vota per avui, després per demà</p>
+                <select
+                  value={configSettings.voting_cutoff_hour}
+                  onChange={(e) => setConfigSettings(s => ({ ...s, voting_cutoff_hour: parseInt(e.target.value) }))}
+                  className="border border-gray-300 text-gray-700 rounded-lg px-3 py-2 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00 h</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  🌙 Hora límit de resultats
+                </label>
+                <p className="text-xs text-gray-600 mb-2">A partir d&apos;aquesta hora els resultats mostren el dia següent</p>
+                <select
+                  value={configSettings.results_cutoff_hour}
+                  onChange={(e) => setConfigSettings(s => ({ ...s, results_cutoff_hour: parseInt(e.target.value) }))}
+                  className="border border-gray-300 text-gray-700 rounded-lg px-3 py-2 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00 h</option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleSaveConfig}
+                disabled={savingConfig}
+                className="flex items-center gap-2 px-5 py-2.5 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 disabled:opacity-50 transition-colors"
+              >
+                <Save size={16} />
+                {savingConfig ? 'Guardant...' : 'Guardar canvis'}
+              </button>
+
+              {configMsg && (
+                <p className="text-sm text-gray-700">{configMsg}</p>
+              )}
+            </div>
           </div>
         )}
 
