@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { Settings, ChefHat, BarChart3, Plus, Edit, Trash2, Save, X, LogOut, Copy, Share2, Users, UserPlus, Shield, Mail, UserX, Bell, Clock } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
@@ -459,51 +459,25 @@ export default function AdminPage() {
           </div>
 
           {/* Pestañas de navegación */}
-          <div className="flex gap-4 border-b border-gray-200">
-            <button
-              onClick={() => setSelectedTab('menus')}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-                selectedTab === 'menus'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <ChefHat className="inline mr-2" size={18} />
-              Gestió de Menús
-            </button>
-            <button
-              onClick={() => setSelectedTab('votes')}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-                selectedTab === 'votes'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <BarChart3 className="inline mr-2" size={18} />
-              Resultats de Vots
-            </button>
-            <button
-              onClick={() => setSelectedTab('usuaris')}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-                selectedTab === 'usuaris'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Users className="inline mr-2" size={18} />
-              Usuaris
-            </button>
-            <button
-              onClick={() => setSelectedTab('config')}
-              className={`px-4 py-2 font-medium border-b-2 transition-colors ${
-                selectedTab === 'config'
-                  ? 'border-orange-500 text-orange-600'
-                  : 'border-transparent text-gray-600 hover:text-gray-800'
-              }`}
-            >
-              <Settings className="inline mr-2" size={18} />
-              Configuració
-            </button>
+          <div className="flex gap-1 sm:gap-4 border-b border-gray-200 overflow-x-auto scrollbar-hide">
+            {([
+              { id: 'menus', icon: <ChefHat size={16} />, label: 'Menús' },
+              { id: 'votes', icon: <BarChart3 size={16} />, label: 'Resultats' },
+              { id: 'usuaris', icon: <Users size={16} />, label: 'Usuaris' },
+              { id: 'config', icon: <Settings size={16} />, label: 'Config' },
+            ] as { id: 'menus'|'votes'|'usuaris'|'config'; icon: React.ReactNode; label: string }[]).map(({ id, icon, label }) => (
+              <button
+                key={id}
+                onClick={() => setSelectedTab(id)}
+                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                  selectedTab === id
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                {icon}{label}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -919,36 +893,32 @@ export default function AdminPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   ⏰ Hora límit de votació
                 </label>
-                <p className="text-xs text-gray-400 mb-2">Abans d&apos;aquesta hora es vota per avui, després per demà</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={configSettings.voting_cutoff_hour}
-                    onChange={(e) => setConfigSettings(s => ({ ...s, voting_cutoff_hour: parseInt(e.target.value) }))}
-                    className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                  <span className="text-gray-500">h</span>
-                </div>
+                <p className="text-xs text-gray-600 mb-2">Abans d&apos;aquesta hora es vota per avui, després per demà</p>
+                <select
+                  value={configSettings.voting_cutoff_hour}
+                  onChange={(e) => setConfigSettings(s => ({ ...s, voting_cutoff_hour: parseInt(e.target.value) }))}
+                  className="border border-gray-300 text-gray-700 rounded-lg px-3 py-2 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00 h</option>
+                  ))}
+                </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   🌙 Hora límit de resultats
                 </label>
-                <p className="text-xs text-gray-400 mb-2">A partir d&apos;aquesta hora els resultats mostren el dia següent</p>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min={0}
-                    max={23}
-                    value={configSettings.results_cutoff_hour}
-                    onChange={(e) => setConfigSettings(s => ({ ...s, results_cutoff_hour: parseInt(e.target.value) }))}
-                    className="w-24 border border-gray-300 rounded-lg px-3 py-2 text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                  <span className="text-gray-500">h</span>
-                </div>
+                <p className="text-xs text-gray-600 mb-2">A partir d&apos;aquesta hora els resultats mostren el dia següent</p>
+                <select
+                  value={configSettings.results_cutoff_hour}
+                  onChange={(e) => setConfigSettings(s => ({ ...s, results_cutoff_hour: parseInt(e.target.value) }))}
+                  className="border border-gray-300 text-gray-700 rounded-lg px-3 py-2 text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  {Array.from({ length: 24 }, (_, i) => (
+                    <option key={i} value={i}>{String(i).padStart(2, '0')}:00 h</option>
+                  ))}
+                </select>
               </div>
 
               <button
