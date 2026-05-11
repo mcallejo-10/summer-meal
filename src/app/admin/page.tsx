@@ -445,9 +445,6 @@ export default function AdminPage() {
               <h1 className="text-3xl font-bold text-gray-800">
                 Panell d&apos;Administració
               </h1>
-              <p className="text-gray-600">
-                Gestiona els menús i visualitza els resultats dels vots
-              </p>
             </div>
             <button
               onClick={handleLogout}
