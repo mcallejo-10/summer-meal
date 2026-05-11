@@ -26,12 +26,21 @@ Summer Meal v2 es una aplicación desarrollada con Next.js 15 que permite a los 
 - **Configuración de menús**: Crear menús específicos por día de la semana
 - **Roles de administrador**: Control de acceso y permisos
 - **Generación de resúmenes**: Exportación de datos para planificación
+- **Configuración de deadlines**: Horas límite de votación y resultados configurables desde la interfaz
+- **Recordatorios push**: Enviar notificaciones a usuarios que no han votado (dinar + sopar)
 
 ### 🎨 Experiencia de Usuario
 - **Avatares personalizados**: Cada usuario tiene su propia imagen de perfil
 - **Interfaz intuitiva**: Diseño limpio y fácil de usar
 - **Feedback visual**: Confirmaciones y estados de carga claros
 - **Responsive design**: Funciona perfectamente en móviles, tablets y escritorio
+- **Autenticación con Magic Link**: Login seguro sin contraseñas mediante email
+
+### 📱 PWA (Progressive Web App)
+- **Instalable**: Instala la app en tu dispositivo móvil desde el navegador
+- **Iconas personalizadas**: Iconas optimizadas para iOS y Android
+- **Notificaciones push**: Recordatorios automáticos para usuarios que no han votado
+- **Service worker**: Recepción de notificaciones en segundo plano
 
 ## 🛠️ Tecnologías Utilizadas
 
@@ -42,6 +51,7 @@ Summer Meal v2 es una aplicación desarrollada con Next.js 15 que permite a los 
 - **[Supabase](https://supabase.com/)** - Backend como servicio (BaaS) con PostgreSQL
 - **[Lucide React](https://lucide.dev/)** - Iconos modernos
 - **[Turbopack](https://turbo.build/pack)** - Bundler ultrarrápido para desarrollo
+- **[Web Push](https://web.dev/push-notifications/)** - API para notificaciones push
 
 ## 🚀 Instalación y Configuración
 
