@@ -459,7 +459,7 @@ export default function AdminPage() {
           </div>
 
           {/* Pestañas de navegación */}
-          <div className="flex gap-1 sm:gap-4 border-b border-gray-200 overflow-x-auto scrollbar-hide">
+          <div className="flex border-b border-gray-200">
             {([
               { id: 'menus', icon: <ChefHat size={16} />, label: 'Menús' },
               { id: 'votes', icon: <BarChart3 size={16} />, label: 'Resultats' },
@@ -469,7 +469,7 @@ export default function AdminPage() {
               <button
                 key={id}
                 onClick={() => setSelectedTab(id)}
-                className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 whitespace-nowrap transition-colors ${
+                className={`flex-1 flex items-center justify-center gap-1.5 px-2 py-2 text-xs font-medium border-b-2 transition-colors ${
                   selectedTab === id
                     ? 'border-orange-500 text-orange-600'
                     : 'border-transparent text-gray-600 hover:text-gray-800'
