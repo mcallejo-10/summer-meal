@@ -157,17 +157,14 @@ export default function VotarPage() {
     try {
       if (existingVote) {
         // Actualitzar vot existent
-        const updateData = {
+        await updateVote(existingVote.id, {
           choice: selectedVote as
             | "omnivora"
             | "vegetariana"
             | "vegana"
             | "porto_el_meu_menjar"
             | "no_vindré",
-          updated_at: new Date().toISOString(),
-        };
-
-        await updateVote(existingVote.id, updateData);
+        });
       } else {
         const voteData = {
           date: formatDateToISO(getVotingDate()),
