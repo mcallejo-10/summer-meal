@@ -176,12 +176,22 @@ export async function getVotesByDate(date: string) {
 export async function getNotVotedUsers(date: string): Promise<{ id: string; name: string }[]> {
   const [{ data: allUsers }, { data: votes }] = await Promise.all([
     supabase.from('users').select('id, name').order('name'),
-    supabase.from('votes').select('user_id').eq('date', date),
+    supabase.from('votes').select('user_id, meal_type').eq('date', date),
   ])
 
   if (!allUsers) return []
-  const votedIds = new Set(votes?.map((v: { user_id: string }) => v.user_id) || [])
-  return allUsers.filter((u: { id: string; name: string }) => !votedIds.has(u.id))
+
+  // Un usuari ha "votat completament" només si té vot de dinar I de sopar
+  const mealTypesByUser = new Map<string, Set<string>>()
+  votes?.forEach((v: { user_id: string; meal_type: string }) => {
+    if (!mealTypesByUser.has(v.user_id)) mealTypesByUser.set(v.user_id, new Set())
+    mealTypesByUser.get(v.user_id)!.add(v.meal_type)
+  })
+
+  return allUsers.filter((u: { id: string; name: string }) => {
+    const mealTypes = mealTypesByUser.get(u.id)
+    return !mealTypes || !mealTypes.has('dinar') || !mealTypes.has('sopar')
+  })
 }
 
 // Nueva función para obtener estadísticas de votos
