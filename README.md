@@ -22,12 +22,13 @@ Summer Meal v2 es una aplicación desarrollada con Next.js 15 que permite a los 
 - **Interfaz responsiva**: Adaptada para dispositivos móviles y desktop
 
 ### 👨‍💼 Panel de Administración
-- **Gestión de usuarios**: Añadir, editar y eliminar usuarios del sistema
+- **Gestión de usuarios**: Añadir, editar y eliminar usuarios del sistema (CRUD completo)
 - **Configuración de menús**: Crear menús específicos por día de la semana
 - **Roles de administrador**: Control de acceso y permisos
 - **Generación de resúmenes**: Exportación de datos para planificación
 - **Configuración de deadlines**: Horas límite de votación y resultados configurables desde la interfaz
 - **Recordatorios push**: Enviar notificaciones a usuarios que no han votado (dinar + sopar)
+- **Vista "Qui no ha votat"**: Ver usuarios pendientes de votar para ambos menús
 
 ### 🎨 Experiencia de Usuario
 - **Avatares personalizados**: Cada usuario tiene su propia imagen de perfil
