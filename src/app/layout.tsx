@@ -19,12 +19,9 @@ export const metadata: Metadata = {
   description: "Aplicació per gestionar els menjars del restaurant",
   manifest: '/manifest.json',
   icons: {
-    icon: [
-      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-    ],
-    shortcut: '/icon-192x192.png',
-    apple: '/icon-192x192.png',
+    icon: '/favicon.svg',
+    shortcut: '/favicon.svg',
+    apple: '/favicon.svg',
   },
 };
 
