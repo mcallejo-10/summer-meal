@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
   const token_hash = requestUrl.searchParams.get('token_hash')
   const type = requestUrl.searchParams.get('type')
 
+  console.log('Auth callback:', { code: !!code, token_hash: !!token_hash, type })
+
   const cookieStore = await cookies()
 
   const supabase = createServerClient(
@@ -48,13 +50,17 @@ export async function GET(request: NextRequest) {
 
   // Flux 1: OAuth o magic link amb "code" (PKCE flow)
   if (code) {
+    console.log('Processing code flow...')
     const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+    console.log('Code flow result:', { error: error?.message, user: !!data.user })
     if (!error && data.user) {
       const { data: userData } = await supabase
         .from('users')
         .select('is_admin')
         .eq('id', data.user.id)
         .single()
+
+      console.log('User data from DB:', { userData: !!userData })
 
       // Si l'usuari no existeix a la taula users, no permetre login
       if (!userData) {
@@ -64,16 +70,22 @@ export async function GET(request: NextRequest) {
       }
 
       const redirectTo = userData.is_admin ? '/admin' : '/votar'
+      console.log('Redirecting to:', redirectTo)
       return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
+    } else {
+      console.log('Code flow error:', error?.message)
     }
   }
 
   // Flux 2: Invitació o email confirmation amb token_hash (OTP flow)
   if (token_hash && type) {
+    console.log('Processing token_hash flow, type:', type)
     const { data, error } = await supabase.auth.verifyOtp({
       token_hash,
       type: type as 'invite' | 'magiclink' | 'email' | 'recovery' | 'signup',
     })
+
+    console.log('Token flow result:', { error: error?.message, user: !!data.user })
 
     if (!error && data.user) {
       const { data: userData } = await supabase
@@ -81,6 +93,8 @@ export async function GET(request: NextRequest) {
         .select('is_admin')
         .eq('id', data.user.id)
         .single()
+
+      console.log('User data from DB:', { userData: !!userData })
 
       // Si l'usuari no existeix a la taula users, no permetre login
       if (!userData) {
@@ -90,7 +104,10 @@ export async function GET(request: NextRequest) {
       }
 
       const redirectTo = userData.is_admin ? '/admin' : '/votar'
+      console.log('Redirecting to:', redirectTo)
       return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
+    } else {
+      console.log('Token flow error:', error?.message)
     }
   }
 
