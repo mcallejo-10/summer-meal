@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { Calendar, ArrowLeft, CheckCircle, Users, ChevronDown, LogOut } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import {
@@ -339,16 +338,14 @@ export default function VotarPage() {
         {/* ── Per qui votem ─────────────────────────────── */}
         <div className="bg-white rounded-xl shadow-sm p-4 mb-4 flex items-center gap-3">
           <div className="relative w-14 h-14 shrink-0">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={getUserAvatarUrl(votingForUser)}
               alt={votingForUser.name}
-              width={56}
-              height={56}
               className="w-full h-full rounded-full object-cover border-2 border-orange-300"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = "/avatars/default.jpeg";
               }}
-              unoptimized
             />
             {!isVotingForSelf && (
               <div className="absolute -bottom-1 -right-1 bg-orange-500 rounded-full p-1">
@@ -518,16 +515,14 @@ export default function VotarPage() {
                       }`}
                     >
                       <div className="w-12 h-12">
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={getUserAvatarUrl(user)}
                           alt={user.name}
-                          width={48}
-                          height={48}
                           className="w-full h-full rounded-full object-cover border-2 border-orange-200"
                           onError={(e) => {
                             (e.target as HTMLImageElement).src = "/avatars/default.jpeg";
                           }}
-                          unoptimized
                         />
                       </div>
                       <span className="text-xs font-medium text-gray-700 text-center leading-tight">
