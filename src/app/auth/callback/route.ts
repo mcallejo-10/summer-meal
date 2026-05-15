@@ -56,7 +56,14 @@ export async function GET(request: NextRequest) {
         .eq('id', data.user.id)
         .single()
 
-      const redirectTo = userData?.is_admin ? '/admin' : '/votar'
+      // Si l'usuari no existeix a la taula users, no permetre login
+      if (!userData) {
+        return NextResponse.redirect(
+          new URL('/login?error=no_access', requestUrl.origin)
+        )
+      }
+
+      const redirectTo = userData.is_admin ? '/admin' : '/votar'
       return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
     }
   }
@@ -75,7 +82,14 @@ export async function GET(request: NextRequest) {
         .eq('id', data.user.id)
         .single()
 
-      const redirectTo = userData?.is_admin ? '/admin' : '/votar'
+      // Si l'usuari no existeix a la taula users, no permetre login
+      if (!userData) {
+        return NextResponse.redirect(
+          new URL('/login?error=no_access', requestUrl.origin)
+        )
+      }
+
+      const redirectTo = userData.is_admin ? '/admin' : '/votar'
       return NextResponse.redirect(new URL(redirectTo, requestUrl.origin))
     }
   }
