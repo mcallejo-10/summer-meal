@@ -239,9 +239,9 @@ export async function getUserVoteForDate(userId: string, date: string, mealType:
     .eq('user_id', userId)
     .eq('date', date)
     .eq('meal_type', mealType)
-    .single()
+    .maybeSingle()
   
-  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows found
+  if (error) {
     console.error('Error obtenint vot de l\'usuari:', error)
   }
   return data
