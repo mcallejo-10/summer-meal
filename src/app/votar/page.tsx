@@ -217,7 +217,7 @@ export default function VotarPage() {
 
   const getUserAvatarUrl = (user: UserType) => {
     const normalizedName = normalizeUserName(user.name);
-    return `/avatars/${normalizedName}.jpeg`;
+    return `/api/avatar/${normalizedName}`;
   };
 
   const getDietTypeColor = (dietType: string) => {
