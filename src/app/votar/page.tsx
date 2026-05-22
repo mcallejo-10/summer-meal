@@ -56,6 +56,7 @@ export default function VotarPage() {
   const [isColleagueExpanded, setIsColleagueExpanded] = useState(false);
   const [votingCutoff, setVotingCutoff] = useState(VOTING_CUTOFF_HOUR);
   const touchStartX = useRef<number | null>(null);
+  const [slideDir, setSlideDir] = useState<'from-right' | 'from-left'>('from-right');
 
   const votingDate = getVotingDate(votingCutoff);
   const votingForToday = isVotingForToday(votingCutoff);
@@ -156,6 +157,8 @@ export default function VotarPage() {
   const isVotingForSelf = selectedUser === loggedInUserId;
 
   const switchMealType = (type: "dinar" | "sopar") => {
+    if (type === selectedMealType) return;
+    setSlideDir(type === "sopar" ? "from-right" : "from-left");
     setSelectedMealType(type);
     setSelectedVote("");
     setIsVoteSubmitted(false);
@@ -391,7 +394,8 @@ export default function VotarPage() {
 
         {/* ── Menú + Formulari de votació ───────────────── */}
         <div
-          className={`rounded-xl p-4 mb-4 ${
+          key={selectedMealType}
+          className={`rounded-xl p-4 mb-4 slide-${slideDir} ${
             selectedMealType === "dinar"
               ? "bg-yellow-50 border border-yellow-200"
               : "bg-teal-50 border border-teal-200"
