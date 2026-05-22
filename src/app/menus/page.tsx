@@ -50,6 +50,8 @@ export default function MenusPage() {
     switch (dietType) {
       case 'omnivora':
         return 'bg-red-500'
+      case 'vegetariana':
+        return 'bg-green-500'
       case 'vegana':
         return 'bg-emerald-500'
       default:
@@ -218,6 +220,10 @@ export default function MenusPage() {
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-red-500 rounded-full"></span>
                 <span><strong>Omnívora:</strong> Inclou carn i peix</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                <span><strong>Vegetariana:</strong> Sense carn ni peix</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-emerald-500 rounded-full"></span>
