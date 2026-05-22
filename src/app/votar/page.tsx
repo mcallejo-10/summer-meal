@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Calendar, ArrowLeft, CheckCircle, Users, ChevronDown, LogOut } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,6 +55,7 @@ export default function VotarPage() {
   const [existingVote, setExistingVote] = useState<Vote | null>(null);
   const [isColleagueExpanded, setIsColleagueExpanded] = useState(false);
   const [votingCutoff, setVotingCutoff] = useState(VOTING_CUTOFF_HOUR);
+  const touchStartX = useRef<number | null>(null);
 
   const votingDate = getVotingDate(votingCutoff);
   const votingForToday = isVotingForToday(votingCutoff);
@@ -154,13 +155,33 @@ export default function VotarPage() {
   const votingForUser = users.find((u) => u.id === selectedUser);
   const isVotingForSelf = selectedUser === loggedInUserId;
 
+  const switchMealType = (type: "dinar" | "sopar") => {
+    setSelectedMealType(type);
+    setSelectedVote("");
+    setIsVoteSubmitted(false);
+    setExistingVote(null);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      if (diff > 0 && selectedMealType === "dinar") switchMealType("sopar");
+      if (diff < 0 && selectedMealType === "sopar") switchMealType("dinar");
+    }
+    touchStartX.current = null;
+  };
+
   const handleVoteSubmit = async () => {
     if (!selectedVote || !selectedUser || submitting) return;
 
     setSubmitting(true);
     try {
       if (existingVote) {
-        // Actualitzar vot existent
         await updateVote(existingVote.id, {
           choice: selectedVote as
             | "omnivora"
@@ -259,7 +280,11 @@ export default function VotarPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div
+      className="min-h-screen bg-gray-50"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <div className="container mx-auto px-4 py-6 max-w-2xl">
 
         {/* ── Header: títol, data i selector dinar/sopar ── */}
@@ -299,12 +324,7 @@ export default function VotarPage() {
           {/* Selector dinar / sopar */}
           <div className="flex gap-2">
             <button
-              onClick={() => {
-                setSelectedMealType("dinar");
-                setSelectedVote("");
-                setIsVoteSubmitted(false);
-                setExistingVote(null);
-              }}
+              onClick={() => switchMealType("dinar")}
               className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm ${
                 selectedMealType === "dinar"
                   ? "bg-orange-500 text-white"
@@ -314,12 +334,7 @@ export default function VotarPage() {
               🍽️ Dinar
             </button>
             <button
-              onClick={() => {
-                setSelectedMealType("sopar");
-                setSelectedVote("");
-                setIsVoteSubmitted(false);
-                setExistingVote(null);
-              }}
+              onClick={() => switchMealType("sopar")}
               className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors text-sm ${
                 selectedMealType === "sopar" ? "text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
               }`}
