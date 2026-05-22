@@ -20,7 +20,7 @@ import {
 import { getResultsDate, formatDateToISO, formatDateToCatalan } from '@/lib/dates'
 
 export default function AdminPage() {
-  const [selectedTab, setSelectedTab] = useState<'menus' | 'votes' | 'usuaris' | 'config'>('menus')
+  const [selectedTab, setSelectedTab] = useState<'menus' | 'votes' | 'usuaris' | 'config'>('votes')
   const [menus, setMenus] = useState<Menu[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
