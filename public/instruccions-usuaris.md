@@ -148,6 +148,7 @@ Des del panel d'admin pots ajustar:
 - Veus en temps real qui ha votat i quina opció
 - Botó **"Copiar resum"** → copia el text al portapapers
 - Botó **"WhatsApp"** → obre directament WhatsApp amb el resum llest per enviar a la cuina 📲
+- Botó **"Enviar recordatori"** (a la part inferior) → envia una notificació als usuaris que encara **no han votat** perquè ho facin
 
 
 ### Convidar un nou usuari — pas a pas
