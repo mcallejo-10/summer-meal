@@ -94,7 +94,7 @@ export default function MenusPage() {
                 {/* Botones de acción */}
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <button
-                    onClick={() => window.open('/menu-personal-2025.jpeg', '_blank')}
+                    onClick={() => window.open('/menu-personal-2026.png', '_blank')}
                     className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium"
                   >
                     <FileImage size={18} />
