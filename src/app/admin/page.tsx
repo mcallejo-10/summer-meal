@@ -67,7 +67,7 @@ export default function AdminPage() {
   // Formulario para nuevos menús o edición
   const [formData, setFormData] = useState({
     dish_name: '',
-    diet_type: 'omnivora' as 'omnivora' | 'vegetariana' | 'vegana',
+    diet_type: 'omnivora' as 'omnivora' | 'vegana',
     meal_type: 'dinar' as 'dinar' | 'sopar',
     day: 'dilluns' as 'dilluns' | 'dimarts' | 'dimecres' | 'dijous' | 'divendres' | 'dissabte' | 'diumenge'
   })
@@ -387,19 +387,16 @@ export default function AdminPage() {
       
       const counts = {
         omnivora: 0,
-        vegetariana: 0,
         vegana: 0
       }
       
       Object.entries(choices).forEach(([choice, data]) => {
-        if (choice in counts) {
-          counts[choice as keyof typeof counts] = data.count
-        }
+        if (choice === 'omnivora') counts.omnivora += data.count
+        if (choice === 'vegana' || choice === 'vegetariana') counts.vegana += data.count
       })
       
       const parts = []
       if (counts.omnivora > 0) parts.push(`${counts.omnivora} omnívors`)
-      if (counts.vegetariana > 0) parts.push(`${counts.vegetariana} vegetarians`)
       if (counts.vegana > 0) parts.push(`${counts.vegana} vegans`)
       
       if (parts.length > 0) {
@@ -590,7 +587,6 @@ export default function AdminPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-500"
                       >
                         <option value="omnivora">Omnívora</option>
-                        <option value="vegetariana">Vegetariana</option>
                         <option value="vegana">Vegana</option>
                       </select>
                     </div>
@@ -654,7 +650,6 @@ export default function AdminPage() {
                             <span 
                               className={`px-2 py-1 rounded-full text-xs text-white ${
                                 menu.diet_type === 'omnivora' ? 'bg-red-500' :
-                                menu.diet_type === 'vegetariana' ? 'bg-green-500' :
                                 'bg-emerald-500'
                               }`}
                             >

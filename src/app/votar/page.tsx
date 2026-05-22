@@ -31,7 +31,6 @@ const supabase = createClient();
 
 const voteOptions = [
   { value: "omnivora", label: "🥩 Omnívora", color: "bg-red-500" },
-  { value: "vegetariana", label: "🥗 Vegetariana", color: "bg-green-500" },
   { value: "vegana", label: "🌱 Vegana", color: "bg-emerald-500" },
   {
     value: "porto_el_meu_menjar",
@@ -165,7 +164,6 @@ export default function VotarPage() {
         await updateVote(existingVote.id, {
           choice: selectedVote as
             | "omnivora"
-            | "vegetariana"
             | "vegana"
             | "porto_el_meu_menjar"
             | "no_vindré",
@@ -177,7 +175,6 @@ export default function VotarPage() {
           voted_by: loggedInUserId,
           choice: selectedVote as
             | "omnivora"
-            | "vegetariana"
             | "vegana"
             | "porto_el_meu_menjar"
             | "no_vindré",
@@ -224,8 +221,6 @@ export default function VotarPage() {
     switch (dietType) {
       case "omnivora":
         return "bg-red-500";
-      case "vegetariana":
-        return "bg-green-500";
       case "vegana":
         return "bg-emerald-500";
       default:

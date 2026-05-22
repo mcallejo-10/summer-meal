@@ -68,7 +68,6 @@ export default function ResultatsPage() {
     const counts = {
       totalCoberts: 0,
       omnivors: 0,
-      vegetarians: 0,
       vegans: 0,
     };
 
@@ -79,9 +78,7 @@ export default function ResultatsPage() {
 
       if (choice === "omnivora") {
         counts.omnivors += data.count;
-      } else if (choice === "vegetariana") {
-        counts.vegetarians += data.count;
-      } else if (choice === "vegana") {
+      } else if (choice === "vegana" || choice === "vegetariana") {
         counts.vegans += data.count;
       }
     });
@@ -230,14 +227,6 @@ export default function ResultatsPage() {
                               Omnívors
                             </div>
                           </div>
-                          <div className="p-3 bg-green-100 rounded-lg">
-                            <div className="text-2xl font-bold text-green-800">
-                              {summary.vegetarians}
-                            </div>
-                            <div className="text-sm font-medium text-green-700">
-                              Vegetarians
-                            </div>
-                          </div>
                           <div className="p-3 bg-emerald-100 rounded-lg">
                             <div className="text-2xl font-bold text-emerald-800">
                               {summary.vegans}
@@ -259,9 +248,7 @@ export default function ResultatsPage() {
                               <h4 className="font-semibold text-gray-800 text-lg">
                                 {choice === "omnivora"
                                   ? "🥩 Omnívora"
-                                  : choice === "vegetariana"
-                                  ? "🥗 Vegetariana"
-                                  : choice === "vegana"
+                                  : choice === "vegana" || choice === "vegetariana"
                                   ? "🌱 Vegana"
                                   : choice === "porto_el_meu_menjar"
                                   ? "🥪 Porto el meu menjar"

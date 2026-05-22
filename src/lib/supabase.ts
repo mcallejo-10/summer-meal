@@ -21,7 +21,7 @@ export interface User {
 export interface Menu {
   id: string
   dish_name: string
-  diet_type: 'omnivora' | 'vegetariana' | 'vegana'
+  diet_type: 'omnivora' | 'vegana'
   meal_type: 'dinar' | 'sopar'
   day: 'dilluns' | 'dimarts' | 'dimecres' | 'dijous' | 'divendres' | 'dissabte' | 'diumenge'
   created_at: string
@@ -32,7 +32,7 @@ export interface Vote {
   user_id: string
   voted_by?: string | null
   date: string
-  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'
+  choice: 'omnivora' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'
   meal_type: 'dinar' | 'sopar'
   created_at: string
   updated_at: string
@@ -51,7 +51,6 @@ export const DAYS_CA = {
 
 export const DIET_TYPES_CA = {
   'omnivora': '🥩 Omnívora',
-  'vegetariana': '🥗 Vegetariana', 
   'vegana': '🌱 Vegana',
   'porto_el_meu_menjar': '🍽️ Porto el meu menjar',
   'no_vindré': '❌ No vindré'
