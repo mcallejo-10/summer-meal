@@ -60,6 +60,7 @@ export default function AdminPage() {
   const [inviteForm, setInviteForm] = useState({ name: '', email: '', is_admin: false })
   const [inviteSending, setInviteSending] = useState(false)
   const [usersMsg, setUsersMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{ userId: string; userName: string } | null>(null)
   
   // Referencia para el formulario de edición
   const formRef = useRef<HTMLDivElement>(null)
@@ -354,10 +355,14 @@ export default function AdminPage() {
 
   // Elimina l'usuari cridant DELETE a l'API Route.
   // La FK ON DELETE CASCADE elimina de public.users i tots els seus vots.
-  const handleDeleteUser = async (userId: string, userName: string) => {
-    if (!confirm(`Segur que vols eliminar ${userName}?\nTots els seus vots s'eliminaran.`)) return
+  const handleDeleteUser = (userId: string, userName: string) => {
+    setDeleteModal({ userId, userName })
+  }
+
+  const confirmDeleteUser = async () => {
+    if (!deleteModal) return
     try {
-      const res = await fetch(`/api/admin/users?id=${userId}`, { method: 'DELETE' })
+      const res = await fetch(`/api/admin/users?id=${deleteModal.userId}`, { method: 'DELETE' })
       if (!res.ok) {
         const d = await res.json()
         throw new Error(d.error)
@@ -365,6 +370,8 @@ export default function AdminPage() {
       await loadAppUsers()
     } catch (e) {
       console.error('Error eliminant usuari:', e)
+    } finally {
+      setDeleteModal(null)
     }
   }
 
@@ -1104,6 +1111,35 @@ export default function AdminPage() {
           </div>
         )}
       </div>
+
+    {deleteModal && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}>
+        <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <Trash2 size={18} className="text-red-600" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-800">Eliminar usuari</h2>
+          </div>
+          <p className="text-gray-600 mb-1">Segur que vols eliminar <span className="font-semibold text-gray-800">{deleteModal.userName}</span>?</p>
+          <p className="text-sm text-red-500 mb-6">Tots els seus vots s&apos;eliminaran i no es pot desfer.</p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setDeleteModal(null)}
+              className="flex-1 px-4 py-2 rounded-xl border border-gray-200 text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+            >
+              Cancel·lar
+            </button>
+            <button
+              onClick={confirmDeleteUser}
+              className="flex-1 px-4 py-2 rounded-xl bg-red-500 text-white font-medium hover:bg-red-600 transition-colors"
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   )
 }
