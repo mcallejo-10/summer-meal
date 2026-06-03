@@ -403,9 +403,9 @@ export default function AdminPage() {
       })
       
       const parts = []
-      if (counts.omnivora > 0) parts.push(`${counts.omnivora} omnívors`)
-      if (counts.vegetariana > 0) parts.push(`${counts.vegetariana} vegetarians`)
-      if (counts.vegana > 0) parts.push(`${counts.vegana} vegans`)
+      if (counts.omnivora > 0) parts.push(`${counts.omnivora} o`)
+      if (counts.vegetariana > 0) parts.push(`${counts.vegetariana} v`)
+      if (counts.vegana > 0) parts.push(`${counts.vegana} ve`)
       
       if (parts.length > 0) {
         summary += parts.join(', ')
