@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { ChefHat, ArrowLeft, Calendar, FileImage } from 'lucide-react'
+import { ChefHat, ArrowLeft, Calendar, FileImage, X, ZoomIn, ZoomOut } from 'lucide-react'
 import Link from 'next/link'
 import { getMenus, type Menu } from '@/lib/supabase'
 
@@ -9,6 +9,17 @@ export default function MenusPage() {
   const [menus, setMenus] = useState<Menu[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedDay, setSelectedDay] = useState<string>('')
+  // Controla el modal del menú complet. El mostrem dins l'app (no amb
+  // window.open) perquè a iOS una pestanya nova amb la imatge no té botó
+  // de retrocés i l'usuari queda atrapat. Així tenim sempre una X per tancar.
+  const [showFullMenu, setShowFullMenu] = useState(false)
+  // Nivell de zoom del menú complet (1 = ajustat a pantalla).
+  const [zoom, setZoom] = useState(1)
+
+  const openFullMenu = () => {
+    setZoom(1)
+    setShowFullMenu(true)
+  }
 
   // Obtener día de hoy
   useEffect(() => {
@@ -94,7 +105,7 @@ export default function MenusPage() {
                 {/* Botones de acción */}
                 <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                   <button
-                    onClick={() => window.open('/menu-personal-2026.png', '_blank')}
+                    onClick={openFullMenu}
                     className="flex items-center justify-center gap-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors font-medium"
                   >
                     <FileImage size={18} />
@@ -233,6 +244,67 @@ export default function MenusPage() {
           </div>
         </div>
       </div>
+
+      {/* Modal del menú complet: es mostra dins l'app amb una X per tancar,
+          per evitar que a iOS l'usuari quedi atrapat en una pestanya sense
+          botó de retrocés. Es pot tancar amb la X o tocant el fons fosc. */}
+      {showFullMenu && (
+        <div
+          className="fixed inset-0 z-50 bg-black/90 overflow-auto"
+          onClick={() => setShowFullMenu(false)}
+        >
+          {/* Botó de tancar */}
+          <button
+            onClick={() => setShowFullMenu(false)}
+            aria-label="Tancar"
+            className="fixed top-4 right-4 z-20 bg-white/90 hover:bg-white text-gray-800 rounded-full p-2 shadow-lg transition-colors"
+          >
+            <X size={24} />
+          </button>
+
+          {/* Controls de zoom */}
+          <div
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 bg-white/90 rounded-full shadow-lg px-2 py-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setZoom((z) => Math.max(1, Math.round((z - 0.5) * 10) / 10))}
+              aria-label="Allunyar"
+              disabled={zoom <= 1}
+              className="text-gray-800 rounded-full p-2 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ZoomOut size={22} />
+            </button>
+            <span className="text-sm font-medium text-gray-700 w-12 text-center select-none">
+              {Math.round(zoom * 100)}%
+            </span>
+            <button
+              onClick={() => setZoom((z) => Math.min(4, Math.round((z + 0.5) * 10) / 10))}
+              aria-label="Apropar"
+              disabled={zoom >= 4}
+              className="text-gray-800 rounded-full p-2 hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            >
+              <ZoomIn size={22} />
+            </button>
+          </div>
+
+          {/* Contenidor que centra la imatge i permet scroll quan hi ha zoom */}
+          <div className="min-h-full min-w-full flex items-center justify-center p-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/menu-personal-2026.png"
+              alt="Menú complet 2026"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                width: zoom === 1 ? 'auto' : `${zoom * 100}%`,
+                maxWidth: zoom === 1 ? '100%' : 'none',
+                maxHeight: zoom === 1 ? '100vh' : 'none',
+              }}
+              className="object-contain rounded-lg shadow-2xl"
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
