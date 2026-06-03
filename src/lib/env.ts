@@ -3,7 +3,11 @@
 export const env = {
   NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
   NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+  SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+  // URL canònica del lloc (ex: https://summer-meal.vercel.app).
+  // S'usa per generar el redirect del magic link de forma estable,
+  // en comptes de window.location.origin (que canvia segons el dispositiu).
+  NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL || ''
 }
 
 // Verificar que las variables críticas estén definidas (solo lanza error en runtime, no en build)

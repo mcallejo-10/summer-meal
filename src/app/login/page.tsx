@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, Suspense } from 'react'
+import { useState, Suspense, useEffect } from 'react'
 import { createClient } from '@/lib/supabase-browser'
+import { env } from '@/lib/env'
 import { ChefHat, Mail, Send, CheckCircle } from 'lucide-react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -24,20 +25,36 @@ function LoginForm() {
 
   const supabase = createClient()
 
+  // Detecta si la pàgina s'ha obert dins d'un navegador integrat (in-app browser)
+  // d'apps com el correu, Instagram, WhatsApp, etc. En aquests navegadors les
+  // cookies de sessió sovint no es guarden i el login pot fallar.
+  const [isInApp, setIsInApp] = useState(false)
+  useEffect(() => {
+    const ua = navigator.userAgent || ''
+    setIsInApp(/FBAN|FBAV|Instagram|Line|Twitter|Snapchat|WhatsApp|Messenger|MicroMessenger/i.test(ua))
+  }, [])
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
 
+    // Usem una URL canònica si està configurada (NEXT_PUBLIC_SITE_URL).
+    // Si no, fem fallback a window.location.origin.
+    // IMPORTANT: aquesta URL ha d'estar a la llista de "Redirect URLs" de Supabase,
+    // si no Supabase rebutja la petició i NO envia el correu.
+    const siteUrl = env.NEXT_PUBLIC_SITE_URL || window.location.origin
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${siteUrl}/auth/callback`,
       },
     })
 
     if (error) {
-      setError(error.message)
+      console.error('signInWithOtp error:', error)
+      setError('Mail no enviat. Torna-ho a provar en uns segons.')
     } else {
       setSent(true)
     }
@@ -84,11 +101,20 @@ function LoginForm() {
             <p className="text-gray-500 mt-1">Entra el teu correu per accedir</p>
           </div>
 
-          {(error || urlError) && (
+          {isInApp && (
+            <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-lg mb-6 text-sm">
+              Sembla que has obert aquesta pàgina dins d&apos;una altra app (correu, Instagram...).
+              Per evitar problemes d&apos;accés, obre-la a <strong>Safari</strong> o <strong>Chrome</strong>.
+            </div>
+          )}
+
+          {urlError === 'invitation_expired' ? (
+            <div className="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded-lg mb-6 text-sm">
+              Ja estàs registrat! Introdueix el teu correu i t&apos;enviarem el link per entrar.
+            </div>
+          ) : (error || urlError) && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 text-sm">
-              {urlError === 'invitation_expired'
-                ? 'El link ha caducat. Sol·licita un nou link daccés.'
-                : urlError === 'no_access'
+              {urlError === 'no_access'
                 ? 'No tens accés. Sol·licita una invitació a un administrador.'
                 : error}
             </div>
