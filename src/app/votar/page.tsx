@@ -58,6 +58,7 @@ export default function VotarPage() {
   const [votingCutoff, setVotingCutoff] = useState(VOTING_CUTOFF_HOUR);
   const touchStartX = useRef<number | null>(null);
   const [slideDir, setSlideDir] = useState<'from-right' | 'from-left'>('from-right');
+  const [pendingMealType, setPendingMealType] = useState<'dinar' | 'sopar' | null>(null);
 
   const votingDate = getVotingDate(votingCutoff);
   const votingForToday = isVotingForToday(votingCutoff);
@@ -157,13 +158,22 @@ export default function VotarPage() {
   const votingForUser = users.find((u) => u.id === selectedUser);
   const isVotingForSelf = selectedUser === loggedInUserId;
 
-  const switchMealType = (type: "dinar" | "sopar") => {
-    if (type === selectedMealType) return;
+  const doSwitchMealType = (type: "dinar" | "sopar") => {
     setSlideDir(type === "sopar" ? "from-right" : "from-left");
     setSelectedMealType(type);
     setSelectedVote("");
     setIsVoteSubmitted(false);
     setExistingVote(null);
+    setPendingMealType(null);
+  };
+
+  const switchMealType = (type: "dinar" | "sopar") => {
+    if (type === selectedMealType) return;
+    if (selectedVote && !isVoteSubmitted) {
+      setPendingMealType(type);
+      return;
+    }
+    doSwitchMealType(type);
   };
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -293,6 +303,34 @@ export default function VotarPage() {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
+      {/* ── Modal: selecció sense confirmar ───────────── */}
+      {pendingMealType && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+            <h3 className="font-bold text-gray-900 mb-2">Selecció sense confirmar ⚠️</h3>
+            <p className="text-gray-600 text-sm mb-6">
+              Has seleccionat <strong>{voteOptions.find(o => o.value === selectedVote)?.label}</strong> per al{' '}
+              <strong>{selectedMealType}</strong> però no has confirmat el vot.
+              Si canvies ara, es perdrà la selecció.
+            </p>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={() => setPendingMealType(null)}
+                className="w-full py-2.5 px-4 bg-orange-500 text-white rounded-lg font-medium hover:bg-orange-600 transition-colors"
+              >
+                Tornar i confirmar
+              </button>
+              <button
+                onClick={() => doSwitchMealType(pendingMealType)}
+                className="w-full py-2.5 px-4 bg-gray-100 text-gray-600 rounded-lg font-medium hover:bg-gray-200 transition-colors"
+              >
+                Canviar sense confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="container mx-auto px-4 py-6 max-w-2xl">
 
         {/* ── Header: títol, data i selector dinar/sopar ── */}
