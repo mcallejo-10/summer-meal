@@ -357,13 +357,6 @@ export default function VotarPage() {
               >
                 <ArrowLeft size={20} />
               </Link>
-              <button
-                onClick={handleLogout}
-                className="p-2 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors"
-                title="Tancar sessió"
-              >
-                <LogOut size={20} />
-              </button>
             </div>
           </div>
 
@@ -590,6 +583,17 @@ export default function VotarPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* ── Tancar sessió ─────────────────────────────── */}
+        <div className="text-center mb-8">
+          <button
+            onClick={handleLogout}
+            className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-red-500 transition-colors"
+          >
+            <LogOut size={14} />
+            Tancar sessió
+          </button>
         </div>
 
       </div>
