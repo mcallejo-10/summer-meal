@@ -16,7 +16,7 @@ function LoginForm() {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [step, setStep] = useState<'email' | 'otp'>('email')
-  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [otp, setOtp] = useState(['', '', '', '', '', '', '', ''])
   const [error, setError] = useState('')
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
@@ -64,7 +64,7 @@ function LoginForm() {
 
     if (error || !data.user) {
       setError('Codi incorrecte o caducat. Torna a demanar un nou codi.')
-      setOtp(['', '', '', '', '', ''])
+      setOtp(['', '', '', '', '', '', '', ''])
       setTimeout(() => otpRefs.current[0]?.focus(), 50)
       setLoading(false)
       return
@@ -95,12 +95,12 @@ function LoginForm() {
     newOtp[index] = char
     setOtp(newOtp)
 
-    if (char && index < 5) {
+    if (char && index < 7) {
       otpRefs.current[index + 1]?.focus()
     }
 
     const fullCode = newOtp.join('')
-    if (fullCode.length === 6 && !newOtp.includes('')) {
+    if (fullCode.length === 8 && !newOtp.includes('')) {
       handleVerifyOtp(fullCode)
     }
   }
@@ -113,8 +113,8 @@ function LoginForm() {
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
-    const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (paste.length === 6) {
+    const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 8)
+    if (paste.length === 8) {
       setOtp(paste.split(''))
       handleVerifyOtp(paste)
     }
@@ -130,7 +130,7 @@ function LoginForm() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Comprova el teu correu</h2>
           <p className="text-gray-600 mb-6">
-            Hem enviat un codi de 6 dígits a <strong>{email}</strong>.
+            Hem enviat un codi de 8 dígits a <strong>{email}</strong>.
             Escriu-lo aquí per entrar.
           </p>
 
@@ -168,7 +168,7 @@ function LoginForm() {
           <p className="text-sm text-gray-400">
             No has rebut res? Revisa el spam o{' '}
             <button
-              onClick={() => { setStep('email'); setOtp(['', '', '', '', '', '']); setError('') }}
+              onClick={() => { setStep('email'); setOtp(['', '', '', '', '', '', '', '']); setError('') }}
               className="text-orange-600 hover:text-orange-800 font-medium"
             >
               torna a intentar-ho
