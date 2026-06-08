@@ -124,7 +124,7 @@ function LoginForm() {
   if (step === 'otp') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-orange-50 to-blue-50 flex items-center justify-center py-12 px-4">
-        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-8 text-center">
+        <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 text-center">
           <div className="mx-auto h-16 w-16 bg-orange-100 rounded-full flex items-center justify-center mb-4">
             <KeyRound className="h-8 w-8 text-orange-500" />
           </div>
@@ -140,7 +140,7 @@ function LoginForm() {
             </div>
           )}
 
-          <div className="flex gap-2 justify-center mb-6" onPaste={handleOtpPaste}>
+          <div className="flex gap-1.5 mb-6" onPaste={handleOtpPaste}>
             {otp.map((digit, i) => (
               <input
                 key={i}
@@ -154,7 +154,7 @@ function LoginForm() {
                 onKeyDown={e => handleOtpKeyDown(i, e)}
                 disabled={loading}
                 autoFocus={i === 0}
-                className="w-11 h-14 text-center text-xl font-bold border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:bg-gray-100 text-gray-900"
+                className="flex-1 min-w-0 h-12 text-center text-lg font-bold border-2 border-gray-300 rounded-lg focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-200 disabled:bg-gray-100 text-gray-900"
               />
             ))}
           </div>
