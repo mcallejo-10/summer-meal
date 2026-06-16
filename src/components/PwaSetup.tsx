@@ -75,7 +75,7 @@ export default function PwaSetup() {
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-orange-500 text-white px-4 py-3 flex items-center justify-between gap-3 shadow-lg">
       <p className="text-sm font-medium">
-        🔔 Vols rebre notificacions dels menús?
+        🔔 Vols rebre recordatoris per votar el menú?
       </p>
       <div className="flex gap-2 shrink-0">
         <button
