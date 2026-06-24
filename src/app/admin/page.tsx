@@ -6,10 +6,6 @@ import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase-browser'
 import type { Session, User } from '@supabase/supabase-js'
 import { 
-  getMenus, 
-  createMenu, 
-  updateMenu, 
-  deleteMenu,
   getMenusV2,
   createMenuV2,
   updateMenuV2,
@@ -88,7 +84,7 @@ export default function AdminPage() {
   // Función para cargar menús (definida antes de su uso)
   const loadMenus = useCallback(async () => {
     try {
-      const menusData = await getMenus()
+      const menusData = await getMenusV2()
       setMenus(menusData)
     } catch (error) {
       console.error('Error carregant menús:', error)
@@ -291,10 +287,10 @@ export default function AdminPage() {
     try {
       if (editingMenu) {
         // Actualizar menú existente
-        await updateMenu(editingMenu.id, formData)
+        await updateMenuV2(editingMenu.id, formData)
       } else {
         // Crear nuevo menú
-        await createMenu(formData)
+        await createMenuV2(formData)
       }
       
       // Recargar menús y resetear formulario
@@ -332,7 +328,7 @@ export default function AdminPage() {
     if (!confirm('Estàs segur que vols eliminar aquest plat?')) return
     
     try {
-      await deleteMenu(menuId)
+      await deleteMenuV2(menuId)
       await loadMenus()
     } catch (error) {
       console.error('Error eliminant menú:', error)

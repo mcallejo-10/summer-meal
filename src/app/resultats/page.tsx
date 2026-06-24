@@ -114,7 +114,7 @@ export default function ResultatsPage() {
 
                   const mealColor = mealType === 'dinar' ? 'text-yellow-600' : 'text-[#2a747f]';
                   const pillColor = mealType === 'dinar' ? 'bg-yellow-100 text-yellow-800' : 'bg-teal-100 text-[#2a747f]';
-                  const bgColor = mealType === 'dinar' ? 'bg-yellow-50 border-yellow-200' : 'bg-teal-50 border-teal-200';
+                  //const bgColor = mealType === 'dinar' ? 'bg-yellow-50 border-yellow-200' : 'bg-teal-50 border-teal-200';
 
                   const renderDishes = (dishes: typeof s.primer, label: string) =>
                     dishes.length > 0 && (
