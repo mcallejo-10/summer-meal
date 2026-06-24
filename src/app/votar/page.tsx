@@ -454,6 +454,46 @@ export default function VotarPage() {
             {votingForToday ? "avui" : "demà"}:
           </h3>
 
+          {isVoteSubmitted ? (
+            <div className="text-center py-6">
+              <div className="bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded-lg mb-3">
+                <div className="flex items-center justify-center gap-2 mb-1">
+                  <CheckCircle size={18} />
+                  <span className="font-semibold">
+                    {existingVote ? "Vot actualitzat! ✅" : "Vot registrat! ✅"}
+                  </span>
+                </div>
+                <p className="text-sm">
+                  {isVotingForSelf
+                    ? `La teva elecció per ${votingForToday ? "avui" : "demà"} ha estat guardada.`
+                    : `L'elecció de ${votingForUser.name} per ${votingForToday ? "avui" : "demà"} ha estat guardada.`}
+                </p>
+                {selectedSpecialChoice && (
+                  <p className="text-sm font-medium mt-1">
+                    {selectedSpecialChoice === 'no_vindré' ? '❌ No vindrà' : '🥪 Porta el seu menjar'}
+                  </p>
+                )}
+                {selectedFirstCourse && selectedSecondCourse && (
+                  <div className="text-sm mt-1">
+                    <p>🥗 Primer: <strong>{selectedFirstCourse.dish_name}</strong></p>
+                    <p>🍽️ Segon: <strong>{selectedSecondCourse.dish_name}</strong></p>
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedFirstCourse(null);
+                  setSelectedSecondCourse(null);
+                  setSelectedSpecialChoice(null);
+                  setIsVoteSubmitted(false);
+                }}
+                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
+              >
+                Canviar elecció
+              </button>
+            </div>
+          ) : (
+            <>
           {/* Opcions especials */}
           <div className="mb-4">
             <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Opcions especials</p>
@@ -579,66 +619,47 @@ export default function VotarPage() {
                   </div>
                 );
               })()}
+
+              <div>
+                <button
+                  onClick={handleVoteSubmit}
+                  disabled={!canConfirm || submitting}
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  {submitting
+                    ? "Enviant..."
+                    : existingVote
+                    ? `Actualitzar elecció${!isVotingForSelf ? ` de ${votingForUser.name}` : ""}`
+                    : `Confirmar elecció${!isVotingForSelf ? ` per ${votingForUser.name}` : ""}`}
+                </button>
+                {!canConfirm && !selectedSpecialChoice && (
+                  <p className="text-center text-xs text-gray-400 mt-2">
+                    Selecciona un primer i un segon plat per confirmar
+                  </p>
+                )}
+              </div>
             </>
           )}
 
-          {!isVoteSubmitted ? (
-            <div>
-              <button
-                onClick={handleVoteSubmit}
-                disabled={!canConfirm || submitting}
-                className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-              >
-                {submitting
-                  ? "Enviant..."
-                  : existingVote
-                  ? `Actualitzar elecció${!isVotingForSelf ? ` de ${votingForUser.name}` : ""}`
-                  : `Confirmar elecció${!isVotingForSelf ? ` per ${votingForUser.name}` : ""}`}
-              </button>
-              {!canConfirm && !selectedSpecialChoice && (
-                <p className="text-center text-xs text-gray-400 mt-2">
-                  Selecciona un primer i un segon plat per confirmar
-                </p>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-6">
-              <div className="bg-green-100 border border-green-300 text-green-700 px-4 py-3 rounded-lg mb-3">
-                <div className="flex items-center justify-center gap-2 mb-1">
-                  <CheckCircle size={18} />
-                  <span className="font-semibold">
-                    {existingVote ? "Vot actualitzat! ✅" : "Vot registrat! ✅"}
-                  </span>
-                </div>
-                <p className="text-sm">
-                  {isVotingForSelf
-                    ? `La teva elecció per ${votingForToday ? "avui" : "demà"} ha estat guardada.`
-                    : `L'elecció de ${votingForUser.name} per ${votingForToday ? "avui" : "demà"} ha estat guardada.`}
-                </p>
-                {selectedSpecialChoice && (
-                  <p className="text-sm font-medium mt-1">
-                    {selectedSpecialChoice === 'no_vindré' ? '❌ No vindrà' : '🥪 Porta el seu menjar'}
-                  </p>
-                )}
-                {selectedFirstCourse && selectedSecondCourse && (
-                  <div className="text-sm mt-1">
-                    <p>🥗 Primer: <strong>{selectedFirstCourse.dish_name}</strong></p>
-                    <p>🍽️ Segon: <strong>{selectedSecondCourse.dish_name}</strong></p>
-                  </div>
-                )}
-              </div>
-              <button
-                onClick={() => {
-                  setSelectedFirstCourse(null);
-                  setSelectedSecondCourse(null);
-                  setSelectedSpecialChoice(null);
-                  setIsVoteSubmitted(false);
-                }}
-                className="text-blue-600 hover:text-blue-800 font-medium text-sm"
-              >
-                Canviar elecció
-              </button>
-            </div>
+          <div>
+            <button
+              onClick={handleVoteSubmit}
+              disabled={!canConfirm || submitting}
+              className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            >
+              {submitting
+                ? "Enviant..."
+                : existingVote
+                ? `Actualitzar elecció${!isVotingForSelf ? ` de ${votingForUser.name}` : ""}`
+                : `Confirmar elecció${!isVotingForSelf ? ` per ${votingForUser.name}` : ""}`}
+            </button>
+            {!canConfirm && !selectedSpecialChoice && (
+              <p className="text-center text-xs text-gray-400 mt-2">
+                Selecciona un primer i un segon plat per confirmar
+              </p>
+            )}
+          </div>
+            </>
           )}
         </div>
 

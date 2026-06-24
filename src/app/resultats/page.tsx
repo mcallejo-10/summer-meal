@@ -158,34 +158,6 @@ export default function ResultatsPage() {
                         )}
                       </div>
 
-                      {/* Resum numèric ràpid */}
-                      {s.totalCoberts > 0 && (
-                        <div className={`rounded-lg p-4 mb-6 border ${bgColor}`}>
-                          <h4 className={`font-semibold mb-3 ${mealColor}`}>🍽️ Resum per organitzar les taules</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-center">
-                            <div className={`p-3 rounded-lg ${mealType === 'dinar' ? 'bg-yellow-100' : 'bg-teal-100'}`}>
-                              <div className={`text-2xl font-bold ${mealColor}`}>{s.totalCoberts}</div>
-                              <div className={`text-sm font-medium ${mealType === 'dinar' ? 'text-yellow-700' : 'text-teal-700'}`}>Coberts</div>
-                            </div>
-                            {(['omnivora','vegetariana','vegana'] as const).map(dt => {
-                              // Comptem persones úniques per dieta mirant els primers seleccionats
-                              const uniqueUsers = new Set(
-                                s.primer.filter(d => d.diet_type === dt).flatMap(d => d.users)
-                              ).size;
-                              if (uniqueUsers === 0) return null;
-                              const colors = { omnivora: 'bg-red-100 text-red-800', vegetariana: 'bg-green-100 text-green-800', vegana: 'bg-emerald-100 text-emerald-800' };
-                              const names = { omnivora: 'Omnívors', vegetariana: 'Vegetarians', vegana: 'Vegans' };
-                              return (
-                                <div key={dt} className={`p-3 rounded-lg ${colors[dt].split(' ')[0]}`}>
-                                  <div className={`text-2xl font-bold ${colors[dt].split(' ')[1]}`}>{uniqueUsers}</div>
-                                  <div className={`text-sm font-medium ${colors[dt].split(' ')[1]}`}>{names[dt]}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      )}
-
                       {renderDishes(s.primer, '🥗 Primers')}
                       {renderDishes(s.segon, '🍽️ Segons')}
 

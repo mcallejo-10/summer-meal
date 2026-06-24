@@ -460,9 +460,7 @@ export default function AdminPage() {
 
     (['dinar', 'sopar'] as const).forEach(mealType => {
       const s = voteStats[mealType];
-      const hasData = s.primer.length > 0 || s.segon.length > 0 ||
-        s['no_vindré'].count > 0 || s.porto_el_meu_menjar.count > 0;
-      if (!hasData) return;
+      if (s.primer.length === 0 && s.segon.length === 0) return;
 
       const emoji = mealType === 'dinar' ? '☀️' : '🌙';
       summary += `\n${emoji} ${mealType === 'dinar' ? 'Dinar' : 'Sopar'}:\n`;
@@ -478,19 +476,6 @@ export default function AdminPage() {
         s.segon.forEach(d => {
           summary += `  • ${d.dish_name} (${dietShort(d.diet_type)}): ${d.count}\n`;
         });
-      }
-      if (s['no_vindré'].count > 0) {
-        summary += `❌ No vindran: ${s['no_vindré'].count}`;
-        if (s['no_vindré'].users.length) summary += ` (${s['no_vindré'].users.join(', ')})`;
-        summary += '\n';
-      }
-      if (s.porto_el_meu_menjar.count > 0) {
-        summary += `🥪 Porten menjar: ${s.porto_el_meu_menjar.count}`;
-        if (s.porto_el_meu_menjar.users.length) summary += ` (${s.porto_el_meu_menjar.users.join(', ')})`;
-        summary += '\n';
-      }
-      if (s.totalCoberts > 0) {
-        summary += `Total coberts: ${s.totalCoberts}\n`;
       }
     });
 
