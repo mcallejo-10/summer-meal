@@ -29,17 +29,18 @@ import {
 const supabase = createClient();
 
 
-const voteOptions = [
-  { value: "omnivora", label: "🥩 Omnívora", color: "bg-red-500" },
-  { value: "vegetariana", label: "🥗 Vegetariana", color: "bg-green-500" },
-  { value: "vegana", label: "🌱 Vegana", color: "bg-emerald-500" },
-  {
-    value: "porto_el_meu_menjar",
-    label: "🥪 Porto el meu menjar",
-    color: "bg-blue-500",
-  },
+const SPECIAL_CHOICES = [
+  { value: "porto_el_meu_menjar", label: "🥪 Porto el meu menjar", color: "bg-blue-500" },
   { value: "no_vindré", label: "❌ No vindré", color: "bg-gray-500" },
 ] as const;
+
+type SpecialChoice = "porto_el_meu_menjar" | "no_vindré";
+
+const DIET_LABELS: Record<string, { short: string; color: string }> = {
+  omnivora:    { short: "O",  color: "bg-red-500" },
+  vegetariana: { short: "V",  color: "bg-green-500" },
+  vegana:      { short: "Ve", color: "bg-emerald-500" },
+};
 
 export default function VotarPage() {
   const router = useRouter();
@@ -49,7 +50,9 @@ export default function VotarPage() {
   const [loggedInUserId, setLoggedInUserId] = useState<string | null>(null);
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedMealType, setSelectedMealType] = useState<"dinar" | "sopar">("dinar");
-  const [selectedVote, setSelectedVote] = useState<string>("");
+  const [selectedFirstCourse, setSelectedFirstCourse] = useState<Menu | null>(null);
+  const [selectedSecondCourse, setSelectedSecondCourse] = useState<Menu | null>(null);
+  const [selectedSpecialChoice, setSelectedSpecialChoice] = useState<SpecialChoice | null>(null);
   const [isVoteSubmitted, setIsVoteSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -114,17 +117,35 @@ export default function VotarPage() {
       
       if (vote) {
         setExistingVote(vote);
-        setSelectedVote(vote.choice);
         setIsVoteSubmitted(true);
+        if (vote.choice === 'no_vindré' || vote.choice === 'porto_el_meu_menjar') {
+          setSelectedSpecialChoice(vote.choice as SpecialChoice);
+          setSelectedFirstCourse(null);
+          setSelectedSecondCourse(null);
+        } else if (vote.first_course_id) {
+          // Restaurem la selecció de plats del vot existent
+          // Usem un setter asíncron un cop menus estigui disponible
+          setSelectedFirstCourse((prev) => {
+            const found = menus.find(m => m.id === vote.first_course_id);
+            return found ?? prev;
+          });
+          setSelectedSecondCourse((prev) => {
+            const found = menus.find(m => m.id === vote.second_course_id);
+            return found ?? prev;
+          });
+          setSelectedSpecialChoice(null);
+        }
       } else {
         setExistingVote(null);
-        setSelectedVote("");
+        setSelectedFirstCourse(null);
+        setSelectedSecondCourse(null);
+        setSelectedSpecialChoice(null);
         setIsVoteSubmitted(false);
       }
     } catch (error) {
       console.error("Error comprovant vot existent:", error);
     }
-  }, [selectedUser, selectedMealType]);
+  }, [selectedUser, selectedMealType, menus]);
 
   useEffect(() => {
     if (selectedUser) {
@@ -132,19 +153,23 @@ export default function VotarPage() {
     }
   }, [selectedUser, selectedMealType, checkExistingVote]);
 
-  const handleColleagueSelect = (userId: string) => {
-    setSelectedUser(userId);
-    setSelectedVote("");
+  const resetVoteSelection = () => {
+    setSelectedFirstCourse(null);
+    setSelectedSecondCourse(null);
+    setSelectedSpecialChoice(null);
     setIsVoteSubmitted(false);
     setExistingVote(null);
+  };
+
+  const handleColleagueSelect = (userId: string) => {
+    setSelectedUser(userId);
+    resetVoteSelection();
     setIsColleagueExpanded(false);
   };
 
   const handleVoteSelf = () => {
     setSelectedUser(loggedInUserId);
-    setSelectedVote("");
-    setIsVoteSubmitted(false);
-    setExistingVote(null);
+    resetVoteSelection();
   };
 
   const handleLogout = async () => {
@@ -161,15 +186,21 @@ export default function VotarPage() {
   const doSwitchMealType = (type: "dinar" | "sopar") => {
     setSlideDir(type === "sopar" ? "from-right" : "from-left");
     setSelectedMealType(type);
-    setSelectedVote("");
+    setSelectedFirstCourse(null);
+    setSelectedSecondCourse(null);
+    setSelectedSpecialChoice(null);
     setIsVoteSubmitted(false);
     setExistingVote(null);
     setPendingMealType(null);
   };
 
+  const hasUnsavedSelection = !isVoteSubmitted && (
+    selectedSpecialChoice !== null || selectedFirstCourse !== null || selectedSecondCourse !== null
+  );
+
   const switchMealType = (type: "dinar" | "sopar") => {
     if (type === selectedMealType) return;
-    if (selectedVote && !isVoteSubmitted) {
+    if (hasUnsavedSelection) {
       setPendingMealType(type);
       return;
     }
@@ -190,35 +221,28 @@ export default function VotarPage() {
     touchStartX.current = null;
   };
 
+  const canConfirm = selectedSpecialChoice !== null ||
+    (selectedFirstCourse !== null && selectedSecondCourse !== null);
+
   const handleVoteSubmit = async () => {
-    if (!selectedVote || !selectedUser || submitting) return;
+    if (!canConfirm || !selectedUser || submitting) return;
 
     setSubmitting(true);
     try {
+      const votePayload = selectedSpecialChoice
+        ? { choice: selectedSpecialChoice, first_course_id: null, second_course_id: null }
+        : { choice: null, first_course_id: selectedFirstCourse!.id, second_course_id: selectedSecondCourse!.id };
+
       if (existingVote) {
-        await updateVote(existingVote.id, {
-          choice: selectedVote as
-            | "omnivora"
-            | "vegetariana"
-            | "vegana"
-            | "porto_el_meu_menjar"
-            | "no_vindré",
-        });
+        await updateVote(existingVote.id, votePayload);
       } else {
-        const voteData = {
+        const newVote = await createVote({
           date: formatDateToISO(getVotingDate()),
           user_id: selectedUser,
           voted_by: loggedInUserId,
-          choice: selectedVote as
-            | "omnivora"
-            | "vegetariana"
-            | "vegana"
-            | "porto_el_meu_menjar"
-            | "no_vindré",
           meal_type: selectedMealType,
-        };
-
-        const newVote = await createVote(voteData);
+          ...votePayload,
+        });
         if (newVote) setExistingVote(newVote as Vote);
       }
 
@@ -231,10 +255,10 @@ export default function VotarPage() {
     }
   };
 
-  // Funcions per obtenir menús del dia de votació
-  const getVotingMenus = (mealType: "dinar" | "sopar") => {
+  // Filtra plats per dia, tipus de menjar i curs (primer/segon)
+  const getVotingMenusByCourse = (mealType: "dinar" | "sopar", course: "primer" | "segon") => {
     return menus.filter(
-      (menu) => menu.day === getDayNameInCatalan(votingDate) && menu.meal_type === mealType
+      m => m.day === getDayNameInCatalan(votingDate) && m.meal_type === mealType && m.course === course
     );
   };
 
@@ -254,18 +278,6 @@ export default function VotarPage() {
     return `/api/avatar/${normalizedName}`;
   };
 
-  const getDietTypeColor = (dietType: string) => {
-    switch (dietType) {
-      case "omnivora":
-        return "bg-red-500";
-      case "vegetariana":
-        return "bg-green-500";
-      case "vegana":
-        return "bg-emerald-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
 
   if (loading) {
     return (
@@ -309,8 +321,8 @@ export default function VotarPage() {
           <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
             <h3 className="font-bold text-gray-900 mb-2">Selecció sense confirmar ⚠️</h3>
             <p className="text-gray-600 text-sm mb-6">
-              Has seleccionat <strong>{voteOptions.find(o => o.value === selectedVote)?.label}</strong> per al{' '}
-              <strong>{selectedMealType}</strong> però no has confirmat el vot.
+              Tens una selecció sense confirmar per al{' '}
+              <strong>{selectedMealType}</strong>.
               Si canvies ara, es perdrà la selecció.
             </p>
             <div className="flex flex-col gap-2">
@@ -438,65 +450,143 @@ export default function VotarPage() {
           }`}
         >
           <h3 className="text-base font-semibold text-gray-800 mb-3">
-            📋 Opcions de {selectedMealType === "dinar" ? "dinar" : "sopar"} per{" "}
+            Opcions de {selectedMealType === "dinar" ? "dinar" : "sopar"} per{" "}
             {votingForToday ? "avui" : "demà"}:
           </h3>
-          {getVotingMenus(selectedMealType).length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-4">
-              {getVotingMenus(selectedMealType).map((menu) => (
-                <div
-                  key={menu.id}
-                  className={`rounded-lg p-3 border text-sm ${
-                    selectedMealType === "dinar"
-                      ? "bg-yellow-100 border-yellow-200"
-                      : "bg-teal-100 border-teal-200"
+
+          {/* Opcions especials */}
+          <div className="mb-4">
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Opcions especials</p>
+            <div className="flex flex-wrap gap-2">
+              {SPECIAL_CHOICES.map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => {
+                    setSelectedSpecialChoice(
+                      selectedSpecialChoice === opt.value ? null : opt.value as SpecialChoice
+                    );
+                    setSelectedFirstCourse(null);
+                    setSelectedSecondCourse(null);
+                  }}
+                  className={`px-4 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
+                    selectedSpecialChoice === opt.value
+                      ? `${opt.color} text-white border-transparent`
+                      : selectedMealType === 'dinar'
+                      ? 'bg-yellow-100 text-gray-700 border-yellow-200 hover:border-yellow-400'
+                      : 'bg-teal-100 text-gray-700 border-teal-200 hover:border-teal-400'
                   }`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-gray-800">{menu.dish_name}</span>
-                    <span
-                      className={`px-2 py-0.5 rounded-full text-xs text-white shrink-0 ${getDietTypeColor(menu.diet_type)}`}
-                    >
-                      {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
-                    </span>
-                  </div>
-                </div>
+                  {opt.label}
+                </button>
               ))}
             </div>
-          ) : (
-            <p className="text-gray-500 text-sm mb-4">
-              No hi ha opcions de {selectedMealType} configurades per{" "}
-              {votingForToday ? "avui" : "demà"}.
-            </p>
+          </div>
+
+          {!selectedSpecialChoice && (
+            <>
+              <div className={`border-t mb-4 ${
+                selectedMealType === 'dinar' ? 'border-yellow-200' : 'border-teal-200'
+              }`} />
+
+              {/* Primer plat */}
+              {(() => {
+                const primers = getVotingMenusByCourse(selectedMealType, "primer");
+                return (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">🥗 Primer plat</p>
+                    {primers.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {primers.map(menu => {
+                          const diet = DIET_LABELS[menu.diet_type];
+                          const isSelected = selectedFirstCourse?.id === menu.id;
+                          return (
+                            <button
+                              key={menu.id}
+                              onClick={() => setSelectedFirstCourse(isSelected ? null : menu)}
+                              className={`p-3 rounded-lg border-2 text-left text-sm transition-all ${
+                                isSelected
+                                  ? selectedMealType === 'dinar'
+                                    ? 'bg-yellow-200 border-yellow-400 shadow-sm'
+                                    : 'bg-teal-200 border-teal-400 shadow-sm'
+                                  : selectedMealType === 'dinar'
+                                  ? 'bg-yellow-100 border-yellow-200 hover:border-yellow-300'
+                                  : 'bg-teal-100 border-teal-200 hover:border-teal-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className={`font-medium ${
+                                  isSelected ? (selectedMealType === 'dinar' ? 'text-yellow-900' : 'text-teal-900') : 'text-gray-800'
+                                }`}>
+                                  {isSelected && <span className="mr-1">✓</span>}{menu.dish_name}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs text-white shrink-0 ${diet?.color}`}>
+                                  {diet?.short}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm italic">Cap primer configurat per {votingForToday ? 'avui' : 'demà'}.</p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Segon plat */}
+              {(() => {
+                const segons = getVotingMenusByCourse(selectedMealType, "segon");
+                return (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">🍽️ Segon plat</p>
+                    {segons.length > 0 ? (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        {segons.map(menu => {
+                          const diet = DIET_LABELS[menu.diet_type];
+                          const isSelected = selectedSecondCourse?.id === menu.id;
+                          return (
+                            <button
+                              key={menu.id}
+                              onClick={() => setSelectedSecondCourse(isSelected ? null : menu)}
+                              className={`p-3 rounded-lg border-2 text-left text-sm transition-all ${
+                                isSelected
+                                  ? selectedMealType === 'dinar'
+                                    ? 'bg-yellow-200 border-yellow-400 shadow-sm'
+                                    : 'bg-teal-200 border-teal-400 shadow-sm'
+                                  : selectedMealType === 'dinar'
+                                  ? 'bg-yellow-100 border-yellow-200 hover:border-yellow-300'
+                                  : 'bg-teal-100 border-teal-200 hover:border-teal-300'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-2">
+                                <span className={`font-medium ${
+                                  isSelected ? (selectedMealType === 'dinar' ? 'text-yellow-900' : 'text-teal-900') : 'text-gray-800'
+                                }`}>
+                                  {isSelected && <span className="mr-1">✓</span>}{menu.dish_name}
+                                </span>
+                                <span className={`px-2 py-0.5 rounded-full text-xs text-white shrink-0 ${diet?.color}`}>
+                                  {diet?.short}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-gray-400 text-sm italic">Cap segon configurat per {votingForToday ? 'avui' : 'demà'}.</p>
+                    )}
+                  </div>
+                );
+              })()}
+            </>
           )}
 
           {!isVoteSubmitted ? (
             <div>
-              <h3 className="text-base font-semibold text-gray-800 mb-3">
-                Què {isVotingForSelf ? "vols" : `vol ${votingForUser.name}`}{" "}
-                {selectedMealType === "dinar" ? "dinar" : "sopar"}{" "}
-                {votingForToday ? "avui" : "demà"}?
-              </h3>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {voteOptions.map((option) => (
-                  <button
-                    key={option.value}
-                    onClick={() => setSelectedVote(option.value)}
-                    className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${
-                      selectedVote === option.value
-                        ? `${option.color} text-white border-transparent`
-                        : selectedMealType === "dinar"
-                        ? "bg-yellow-100 text-gray-700 border-yellow-200 hover:border-yellow-300 hover:bg-yellow-200"
-                        : "bg-teal-100 text-gray-700 border-teal-200 hover:border-teal-300 hover:bg-teal-200"
-                    }`}
-                  >
-                    {option.label}
-                  </button>
-                ))}
-              </div>
               <button
                 onClick={handleVoteSubmit}
-                disabled={!selectedVote || submitting}
+                disabled={!canConfirm || submitting}
                 className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
               >
                 {submitting
@@ -505,6 +595,11 @@ export default function VotarPage() {
                   ? `Actualitzar elecció${!isVotingForSelf ? ` de ${votingForUser.name}` : ""}`
                   : `Confirmar elecció${!isVotingForSelf ? ` per ${votingForUser.name}` : ""}`}
               </button>
+              {!canConfirm && !selectedSpecialChoice && (
+                <p className="text-center text-xs text-gray-400 mt-2">
+                  Selecciona un primer i un segon plat per confirmar
+                </p>
+              )}
             </div>
           ) : (
             <div className="text-center py-6">
@@ -520,9 +615,25 @@ export default function VotarPage() {
                     ? `La teva elecció per ${votingForToday ? "avui" : "demà"} ha estat guardada.`
                     : `L'elecció de ${votingForUser.name} per ${votingForToday ? "avui" : "demà"} ha estat guardada.`}
                 </p>
+                {selectedSpecialChoice && (
+                  <p className="text-sm font-medium mt-1">
+                    {selectedSpecialChoice === 'no_vindré' ? '❌ No vindrà' : '🥪 Porta el seu menjar'}
+                  </p>
+                )}
+                {selectedFirstCourse && selectedSecondCourse && (
+                  <div className="text-sm mt-1">
+                    <p>🥗 Primer: <strong>{selectedFirstCourse.dish_name}</strong></p>
+                    <p>🍽️ Segon: <strong>{selectedSecondCourse.dish_name}</strong></p>
+                  </div>
+                )}
               </div>
               <button
-                onClick={() => { setSelectedVote(""); setIsVoteSubmitted(false); }}
+                onClick={() => {
+                  setSelectedFirstCourse(null);
+                  setSelectedSecondCourse(null);
+                  setSelectedSpecialChoice(null);
+                  setIsVoteSubmitted(false);
+                }}
                 className="text-blue-600 hover:text-blue-800 font-medium text-sm"
               >
                 Canviar elecció

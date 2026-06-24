@@ -10,12 +10,13 @@ import {
   createMenu, 
   updateMenu, 
   deleteMenu,
-  getVoteStats,
+  getVoteStatsByDish,
   getNotVotedUsers,
   getAppSettings,
   updateAppSetting,
   type Menu,
   type User as AppUser,
+  type VoteStatsByDish,
 } from '@/lib/supabase'
 import { getResultsDate, formatDateToISO, formatDateToCatalan } from '@/lib/dates'
 
@@ -30,16 +31,7 @@ export default function AdminPage() {
   
   const todayString = formatDateToISO(getResultsDate());
   
-  interface VoteStats {
-    [meal_type: string]: {
-      [choice: string]: {
-        count: number
-        users: string[]
-      }
-    }
-  }
-  
-  const [voteStats, setVoteStats] = useState<VoteStats | null>(null)
+  const [voteStats, setVoteStats] = useState<VoteStatsByDish | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>(todayString)
   const [loadingVotes, setLoadingVotes] = useState(false)
   const [notVotedUsers, setNotVotedUsers] = useState<{ id: string; name: string }[]>([])
@@ -70,7 +62,8 @@ export default function AdminPage() {
     dish_name: '',
     diet_type: 'omnivora' as 'omnivora' | 'vegetariana' | 'vegana',
     meal_type: 'dinar' as 'dinar' | 'sopar',
-    day: 'dilluns' as 'dilluns' | 'dimarts' | 'dimecres' | 'dijous' | 'divendres' | 'dissabte' | 'diumenge'
+    day: 'dilluns' as 'dilluns' | 'dimarts' | 'dimecres' | 'dijous' | 'divendres' | 'dissabte' | 'diumenge',
+    course: 'primer' as 'primer' | 'segon',
   })
 
   // Función para cargar menús (definida antes de su uso)
@@ -134,7 +127,7 @@ export default function AdminPage() {
     setLoadingVotes(true)
     try {
       const [stats, notVoted] = await Promise.all([
-        getVoteStats(date),
+        getVoteStatsByDish(date),
         getNotVotedUsers(date),
       ])
       setVoteStats(stats)
@@ -246,7 +239,8 @@ export default function AdminPage() {
       dish_name: '',
       diet_type: 'omnivora',
       meal_type: 'dinar',
-      day: 'dilluns'
+      day: 'dilluns',
+      course: 'primer',
     })
     setShowAddForm(false)
     setEditingMenu(null)
@@ -280,7 +274,8 @@ export default function AdminPage() {
       dish_name: menu.dish_name,
       diet_type: menu.diet_type,
       meal_type: menu.meal_type,
-      day: menu.day
+      day: menu.day,
+      course: menu.course ?? 'primer',
     })
     setEditingMenu(menu)
     setShowAddForm(true)
@@ -375,48 +370,53 @@ export default function AdminPage() {
     }
   }
 
-  // Generar resumen para compartir con el restaurante
+  // Generar resum per compartir amb el restaurant (nou format per plats)
   const generateSummary = () => {
     if (!voteStats) return ''
-    
+
     const [year, month, day] = selectedDate.split('-').map(Number);
     const formattedDate = formatDateToCatalan(new Date(year, month - 1, day));
-    
-    let summary = `📋 Resum per ${formattedDate}\n\n`
-    
-    Object.entries(voteStats).forEach(([mealType, choices]) => {
-      if (Object.keys(choices).length === 0) return
-      
-      const mealName = mealType === 'dinar' ? 'Dinar' : 'Sopar'
-      const mealEmoji = mealType === 'dinar' ? '☀️' : '🌙'
-      
-      summary += `${mealEmoji} ${mealName}: `
-      
-      const counts = {
-        omnivora: 0,
-        vegetariana: 0,
-        vegana: 0
+    const dietShort = (d: string) => d === 'omnivora' ? 'O' : d === 'vegetariana' ? 'V' : 'Ve'
+
+    let summary = `📋 Resum per ${formattedDate}\n`;
+
+    (['dinar', 'sopar'] as const).forEach(mealType => {
+      const s = voteStats[mealType];
+      const hasData = s.primer.length > 0 || s.segon.length > 0 ||
+        s['no_vindré'].count > 0 || s.porto_el_meu_menjar.count > 0;
+      if (!hasData) return;
+
+      const emoji = mealType === 'dinar' ? '☀️' : '🌙';
+      summary += `\n${emoji} ${mealType === 'dinar' ? 'Dinar' : 'Sopar'}:\n`;
+
+      if (s.primer.length > 0) {
+        summary += `Primers:\n`;
+        s.primer.forEach(d => {
+          summary += `  • ${d.dish_name} (${dietShort(d.diet_type)}): ${d.count}\n`;
+        });
       }
-      
-      Object.entries(choices).forEach(([choice, data]) => {
-        if (choice in counts) counts[choice as keyof typeof counts] += data.count
-      })
-      
-      const parts = []
-      if (counts.omnivora > 0) parts.push(`${counts.omnivora} o`)
-      if (counts.vegetariana > 0) parts.push(`${counts.vegetariana} v`)
-      if (counts.vegana > 0) parts.push(`${counts.vegana} ve`)
-      
-      if (parts.length > 0) {
-        summary += parts.join(', ')
-      } else {
-        summary += 'Cap vot registrat'
+      if (s.segon.length > 0) {
+        summary += `Segons:\n`;
+        s.segon.forEach(d => {
+          summary += `  • ${d.dish_name} (${dietShort(d.diet_type)}): ${d.count}\n`;
+        });
       }
-      
-      summary += '\n'
-    })
-    
-    return summary.trim()
+      if (s['no_vindré'].count > 0) {
+        summary += `❌ No vindran: ${s['no_vindré'].count}`;
+        if (s['no_vindré'].users.length) summary += ` (${s['no_vindré'].users.join(', ')})`;
+        summary += '\n';
+      }
+      if (s.porto_el_meu_menjar.count > 0) {
+        summary += `🥪 Porten menjar: ${s.porto_el_meu_menjar.count}`;
+        if (s.porto_el_meu_menjar.users.length) summary += ` (${s.porto_el_meu_menjar.users.join(', ')})`;
+        summary += '\n';
+      }
+      if (s.totalCoberts > 0) {
+        summary += `Total coberts: ${s.totalCoberts}\n`;
+      }
+    });
+
+    return summary.trim();
   }
 
   // Copiar resumen al portapapeles
@@ -597,6 +597,21 @@ export default function AdminPage() {
                         <option value="omnivora">Omnívora</option>
                         <option value="vegetariana">Vegetariana</option>
                         <option value="vegana">Vegana</option>
+                      </select>
+                    </div>
+
+                    {/* Curs (primer / segon) */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Curs del plat
+                      </label>
+                      <select
+                        value={formData.course}
+                        onChange={(e) => setFormData({...formData, course: e.target.value as 'primer' | 'segon'})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 text-gray-500"
+                      >
+                        <option value="primer">🥗 Primer plat</option>
+                        <option value="segon">🍽️ Segon plat</option>
                       </select>
                     </div>
                   </div>
@@ -963,29 +978,21 @@ export default function AdminPage() {
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
                 <p className="mt-2 text-gray-600">Carregant estadístiques...</p>
               </div>
-            ) : voteStats && Object.keys(voteStats).length > 0 ? (
+            ) : voteStats ? (
               <div className="space-y-8">
-                {/* Resumen para compartir */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 ">
+                {/* Resum per compartir */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <div className="flex flex-wrap items-center justify-between mb-3">
                     <h4 className="font-semibold text-blue-800 flex items-center gap-2">
                       <Share2 size={18} />
                       Resum dels vots per restaurant
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={copyToClipboard}
-                        className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors"
-                      >
-                        <Copy size={14} />
-                        Copiar
+                      <button onClick={copyToClipboard} className="flex items-center gap-1 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition-colors">
+                        <Copy size={14} /> Copiar
                       </button>
-                      <button
-                        onClick={shareWhatsApp}
-                        className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors"
-                      >
-                        <Share2 size={14} />
-                        WhatsApp
+                      <button onClick={shareWhatsApp} className="flex items-center gap-1 px-3 py-1 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition-colors">
+                        <Share2 size={14} /> WhatsApp
                       </button>
                     </div>
                   </div>
@@ -994,60 +1001,99 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Estadísticas detalladas */}
-                {Object.entries(voteStats).map(([mealType, choices]) => (
-                  <div key={mealType} className="border rounded-lg p-6">
-                    <h3 className={`text-xl font-bold mb-4 capitalize ${
-                      mealType === 'dinar' ? 'text-yellow-600' : 'text-[#2a747f]'
-                    }`}>
-                      {mealType === 'dinar' ? '☀️ Dinar' : '🌙 Sopar'}
-                    </h3>
-                    
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {Object.entries(choices).map(([choice, data]) => (
-                        <div key={choice} className="bg-gray-50 rounded-lg p-4">
-                          <div className="flex items-center justify-between mb-2">
-                            <h4 className="font-semibold text-gray-800 text-lg">
-                              {choice}
-                            </h4>
-                            <span className={`px-3 py-1 rounded-full text-sm font-bold ${
-                              mealType === 'dinar' 
-                                ? 'bg-yellow-100 text-yellow-800' 
-                                : 'bg-teal-100 text-[#2a747f]'
-                            }`}>
-                              {data.count} {data.count === 1 ? 'vot' : 'vots'}
-                            </span>
-                          </div>
-                          
-                          {data.users.length > 0 && (
-                            <div className="mt-3">
-                              <p className="text-sm font-medium text-gray-600 mb-2">
-                                Persones:
-                              </p>
-                              <div className="flex flex-wrap gap-1">
-                                {data.users.map((user, index) => (
-                                  <span
-                                    key={index}
-                                    className="px-2 py-1 bg-white rounded text-xs text-gray-700 border"
-                                  >
-                                    {user}
+                {/* Stats detallats per dinar i sopar */}
+                {(['dinar', 'sopar'] as const).map(mealType => {
+                  const s = voteStats[mealType];
+                  const hasData = s.primer.length > 0 || s.segon.length > 0 ||
+                    s['no_vindré'].count > 0 || s.porto_el_meu_menjar.count > 0;
+                  if (!hasData) return null;
+
+                  const mealColor = mealType === 'dinar' ? 'text-yellow-600' : 'text-[#2a747f]';
+                  const pillColor = mealType === 'dinar' ? 'bg-yellow-100 text-yellow-800' : 'bg-teal-100 text-[#2a747f]';
+
+                  const renderDishList = (dishes: typeof s.primer, label: string) => (
+                    dishes.length > 0 && (
+                      <div className="mb-4">
+                        <h4 className="font-semibold text-gray-700 mb-2">{label}</h4>
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                          {dishes.map(dish => (
+                            <div key={dish.dish_id} className="bg-gray-50 rounded-lg p-3 border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-800 text-sm">{dish.dish_name}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`px-1.5 py-0.5 rounded-full text-xs text-white ${
+                                    dish.diet_type === 'omnivora' ? 'bg-red-500' :
+                                    dish.diet_type === 'vegetariana' ? 'bg-green-500' : 'bg-emerald-500'
+                                  }`}>
+                                    {dish.diet_type === 'omnivora' ? 'O' : dish.diet_type === 'vegetariana' ? 'V' : 'Ve'}
                                   </span>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${pillColor}`}>
+                                    {dish.count}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {dish.users.map((u, i) => (
+                                  <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-gray-600 border">{u}</span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  );
+
+                  return (
+                    <div key={mealType} className="border rounded-lg p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className={`text-xl font-bold capitalize ${mealColor}`}>
+                          {mealType === 'dinar' ? '☀️ Dinar' : '🌙 Sopar'}
+                        </h3>
+                        {s.totalCoberts > 0 && (
+                          <span className={`px-3 py-1 rounded-full text-sm font-bold ${pillColor}`}>
+                            {s.totalCoberts} cobert{s.totalCoberts !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+
+                      {renderDishList(s.primer, '🥗 Primers')}
+                      {renderDishList(s.segon, '🍽️ Segons')}
+
+                      {/* Opcions especials */}
+                      {(s['no_vindré'].count > 0 || s.porto_el_meu_menjar.count > 0) && (
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {s['no_vindré'].count > 0 && (
+                            <div className="bg-gray-50 rounded-lg p-3 border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-700 text-sm">❌ No vindrà</span>
+                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-gray-100 text-gray-700">{s['no_vindré'].count}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {s['no_vindré'].users.map((u, i) => (
+                                  <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-gray-600 border">{u}</span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {s.porto_el_meu_menjar.count > 0 && (
+                            <div className="bg-gray-50 rounded-lg p-3 border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-700 text-sm">🥪 Porta menjar</span>
+                                <span className="px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700">{s.porto_el_meu_menjar.count}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {s.porto_el_meu_menjar.users.map((u, i) => (
+                                  <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-gray-600 border">{u}</span>
                                 ))}
                               </div>
                             </div>
                           )}
                         </div>
-                      ))}
+                      )}
                     </div>
-                    
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <p className="text-sm text-gray-600">
-                        <strong>Total de vots per {mealType}:</strong> {' '}
-                        {Object.values(choices).reduce((sum, data) => sum + data.count, 0)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-8">

@@ -24,6 +24,7 @@ export interface Menu {
   diet_type: 'omnivora' | 'vegetariana' | 'vegana'
   meal_type: 'dinar' | 'sopar'
   day: 'dilluns' | 'dimarts' | 'dimecres' | 'dijous' | 'divendres' | 'dissabte' | 'diumenge'
+  course: 'primer' | 'segon' | null  // null = menús antics sense curs assignat
   created_at: string
 }
 
@@ -32,10 +33,36 @@ export interface Vote {
   user_id: string
   voted_by?: string | null
   date: string
-  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré'
+  // choice és null quan l'usuari vota plats; 'no_vindré'/'porto_el_meu_menjar' per opcions especials
+  // 'omnivora'/'vegetariana'/'vegana' per vots antics (compatibilitat)
+  choice: 'omnivora' | 'vegetariana' | 'vegana' | 'porto_el_meu_menjar' | 'no_vindré' | null
+  first_course_id: string | null
+  second_course_id: string | null
   meal_type: 'dinar' | 'sopar'
   created_at: string
   updated_at: string
+}
+
+// Estructura de stats per plat (nova)
+export interface DishStats {
+  dish_id: string
+  dish_name: string
+  diet_type: 'omnivora' | 'vegetariana' | 'vegana'
+  count: number
+  users: string[]
+}
+
+export interface MealVoteStats {
+  primer: DishStats[]
+  segon: DishStats[]
+  no_vindré: { count: number; users: string[] }
+  porto_el_meu_menjar: { count: number; users: string[] }
+  totalCoberts: number
+}
+
+export interface VoteStatsByDish {
+  dinar: MealVoteStats
+  sopar: MealVoteStats
 }
 
 // Funcions helper per treballar amb dies en català
@@ -176,16 +203,19 @@ export async function getVotesByDate(date: string) {
 export async function getNotVotedUsers(date: string): Promise<{ id: string; name: string }[]> {
   const [{ data: allUsers }, { data: votes }] = await Promise.all([
     supabase.from('users').select('id, name').order('name'),
-    supabase.from('votes').select('user_id, meal_type').eq('date', date),
+    supabase.from('votes').select('user_id, meal_type, choice, first_course_id').eq('date', date),
   ])
 
   if (!allUsers) return []
 
-  // Un usuari ha "votat completament" només si té vot de dinar I de sopar
   const mealTypesByUser = new Map<string, Set<string>>()
-  votes?.forEach((v: { user_id: string; meal_type: string }) => {
-    if (!mealTypesByUser.has(v.user_id)) mealTypesByUser.set(v.user_id, new Set())
-    mealTypesByUser.get(v.user_id)!.add(v.meal_type)
+  votes?.forEach((v: { user_id: string; meal_type: string; choice: string | null; first_course_id: string | null }) => {
+    // Vot vàlid: té choice (opció especial o vot antic) o first_course_id (vot per plats)
+    const hasVoted = v.choice !== null || v.first_course_id !== null
+    if (hasVoted) {
+      if (!mealTypesByUser.has(v.user_id)) mealTypesByUser.set(v.user_id, new Set())
+      mealTypesByUser.get(v.user_id)!.add(v.meal_type)
+    }
   })
 
   return allUsers.filter((u: { id: string; name: string }) => {
@@ -227,6 +257,92 @@ export async function getVoteStats(date: string) {
     
     stats[mealType][choice].count++
     stats[mealType][choice].users.push(userName)
+  })
+
+  return stats
+}
+
+// Nova funció: estadístiques de vots per plat (sistema nou)
+function emptyMealStats(): MealVoteStats {
+  return {
+    primer: [],
+    segon: [],
+    'no_vindré': { count: 0, users: [] },
+    porto_el_meu_menjar: { count: 0, users: [] },
+    totalCoberts: 0,
+  }
+}
+
+export async function getVoteStatsByDish(date: string): Promise<VoteStatsByDish> {
+  const [votesResult, menusResult] = await Promise.all([
+    supabase
+      .from('votes')
+      .select('*, voter:users!votes_user_id_fkey(name)')
+      .eq('date', date),
+    supabase.from('menus').select('*'),
+  ])
+
+  if (votesResult.error) {
+    console.error('Error obtenint vots per plat:', votesResult.error)
+    return { dinar: emptyMealStats(), sopar: emptyMealStats() }
+  }
+
+  const votes = votesResult.data || []
+  const menus: Menu[] = menusResult.data || []
+  const menusMap = new Map(menus.map(m => [m.id, m]))
+
+  const stats: VoteStatsByDish = {
+    dinar: emptyMealStats(),
+    sopar: emptyMealStats(),
+  }
+
+  votes.forEach((vote: {
+    choice: string | null
+    meal_type: string
+    first_course_id: string | null
+    second_course_id: string | null
+    voter: { name: string } | null
+  }) => {
+    const mealType = vote.meal_type as 'dinar' | 'sopar'
+    const userName = vote.voter?.name || 'Usuari desconegut'
+
+    if (vote.choice === 'no_vindré') {
+      stats[mealType]['no_vindré'].count++
+      stats[mealType]['no_vindré'].users.push(userName)
+    } else if (vote.choice === 'porto_el_meu_menjar') {
+      stats[mealType].porto_el_meu_menjar.count++
+      stats[mealType].porto_el_meu_menjar.users.push(userName)
+    } else if (vote.first_course_id) {
+      // Vot per plats (sistema nou)
+      stats[mealType].totalCoberts++
+
+      // Primer plat
+      const firstMenu = menusMap.get(vote.first_course_id)
+      if (firstMenu) {
+        let ds = stats[mealType].primer.find(d => d.dish_id === firstMenu.id)
+        if (!ds) {
+          ds = { dish_id: firstMenu.id, dish_name: firstMenu.dish_name, diet_type: firstMenu.diet_type, count: 0, users: [] }
+          stats[mealType].primer.push(ds)
+        }
+        ds.count++
+        ds.users.push(userName)
+      }
+
+      // Segon plat
+      if (vote.second_course_id) {
+        const secondMenu = menusMap.get(vote.second_course_id)
+        if (secondMenu) {
+          let ds = stats[mealType].segon.find(d => d.dish_id === secondMenu.id)
+          if (!ds) {
+            ds = { dish_id: secondMenu.id, dish_name: secondMenu.dish_name, diet_type: secondMenu.diet_type, count: 0, users: [] }
+            stats[mealType].segon.push(ds)
+          }
+          ds.count++
+          ds.users.push(userName)
+        }
+      }
+    }
+    // Vots antics (omnivora/vegetariana/vegana) s'ignoren en el nou sistema
   })
 
   return stats
