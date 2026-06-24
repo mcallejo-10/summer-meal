@@ -10,11 +10,16 @@ import {
   createMenu, 
   updateMenu, 
   deleteMenu,
+  getMenusV2,
+  createMenuV2,
+  updateMenuV2,
+  deleteMenuV2,
   getVoteStatsByDish,
   getNotVotedUsers,
   getAppSettings,
   updateAppSetting,
   type Menu,
+  type MenuV2,
   type User as AppUser,
   type VoteStatsByDish,
 } from '@/lib/supabase'
@@ -23,6 +28,8 @@ import { getResultsDate, formatDateToISO, formatDateToCatalan } from '@/lib/date
 export default function AdminPage() {
   const [selectedTab, setSelectedTab] = useState<'menus' | 'votes' | 'usuaris' | 'config'>('votes')
   const [menus, setMenus] = useState<Menu[]>([])
+  const [menusV2, setMenusV2] = useState<MenuV2[]>([])
+  const [loadingV2, setLoadingV2] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editingMenu, setEditingMenu] = useState<Menu | null>(null)
@@ -66,6 +73,18 @@ export default function AdminPage() {
     course: 'primer' as 'primer' | 'segon',
   })
 
+  // Formulari per menus_v2 (nous plats amb primer/segon)
+  const [formDataV2, setFormDataV2] = useState({
+    dish_name: '',
+    diet_type: 'omnivora' as 'omnivora' | 'vegetariana' | 'vegana',
+    meal_type: 'dinar' as 'dinar' | 'sopar',
+    day: 'dilluns' as MenuV2['day'],
+    course: 'primer' as 'primer' | 'segon',
+  })
+  const [showAddFormV2, setShowAddFormV2] = useState(false)
+  const [editingMenuV2, setEditingMenuV2] = useState<MenuV2 | null>(null)
+  const formRefV2 = useRef<HTMLDivElement>(null)
+
   // Función para cargar menús (definida antes de su uso)
   const loadMenus = useCallback(async () => {
     try {
@@ -75,6 +94,18 @@ export default function AdminPage() {
       console.error('Error carregant menús:', error)
     } finally {
       setLoading(false)
+    }
+  }, [])
+
+  const loadMenusV2 = useCallback(async () => {
+    setLoadingV2(true)
+    try {
+      const data = await getMenusV2()
+      setMenusV2(data)
+    } catch (error) {
+      console.error('Error carregant menus_v2:', error)
+    } finally {
+      setLoadingV2(false)
     }
   }, [])
 
@@ -182,6 +213,13 @@ export default function AdminPage() {
       loadVoteStats(selectedDate)
     }
   }, [selectedTab, selectedDate, user, loadVoteStats])
+
+  // Carregar menus_v2 quan s'obre el tab de menús
+  useEffect(() => {
+    if (selectedTab === 'menus' && user) {
+      loadMenusV2()
+    }
+  }, [selectedTab, user, loadMenusV2])
 
   // Carrega la llista d'usuaris cridant la nostra API Route (servidor).
   // useCallback aquí (no al final) perquè els Hooks sempre han d'estar
@@ -299,6 +337,46 @@ export default function AdminPage() {
     } catch (error) {
       console.error('Error eliminant menú:', error)
       alert('Error eliminant el menú. Torna-ho a provar.')
+    }
+  }
+
+  // ── Handlers: menus_v2 ──────────────────────────────────────────────────────
+
+  const resetFormV2 = () => {
+    setFormDataV2({ dish_name: '', diet_type: 'omnivora', meal_type: 'dinar', day: 'dilluns', course: 'primer' })
+    setShowAddFormV2(false)
+    setEditingMenuV2(null)
+  }
+
+  const handleSubmitV2 = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      if (editingMenuV2) {
+        await updateMenuV2(editingMenuV2.id, formDataV2)
+      } else {
+        await createMenuV2(formDataV2)
+      }
+      await loadMenusV2()
+      resetFormV2()
+    } catch {
+      alert('Error guardant el plat. Torna-ho a provar.')
+    }
+  }
+
+  const startEditV2 = (menu: MenuV2) => {
+    setFormDataV2({ dish_name: menu.dish_name, diet_type: menu.diet_type, meal_type: menu.meal_type, day: menu.day, course: menu.course })
+    setEditingMenuV2(menu)
+    setShowAddFormV2(true)
+    setTimeout(() => formRefV2.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
+  }
+
+  const handleDeleteV2 = async (menuId: string) => {
+    if (!confirm('Estàs segur que vols eliminar aquest plat?')) return
+    try {
+      await deleteMenuV2(menuId)
+      await loadMenusV2()
+    } catch {
+      alert('Error eliminant el plat.')
     }
   }
 
@@ -698,6 +776,186 @@ export default function AdminPage() {
                         </button>
                         <button
                           onClick={() => handleDelete(menu.id)}
+                          className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Secció menus_v2 (nova taula de plats amb primer/segon) ── */}
+        {selectedTab === 'menus' && (
+          <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Plats Nous (menus_v2)</h2>
+                <p className="text-sm text-gray-500 mt-1">Taula de prova — aquí afegeixes els plats amb primer/segon que la gent votarà</p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddFormV2(true)
+                  setTimeout(() => formRefV2.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 100)
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Plus size={18} />
+                Afegir Plat
+              </button>
+            </div>
+
+            {showAddFormV2 && (
+              <div ref={formRefV2} className="bg-gray-50 rounded-lg p-6 mb-6 border-2 border-green-200">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-gray-800">
+                    {editingMenuV2 ? (
+                      <span className="flex items-center gap-2">
+                        <Edit size={20} className="text-green-600" />
+                        Editant: <span className="text-green-700">{editingMenuV2.dish_name}</span>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Plus size={20} className="text-green-600" />
+                        Nou Plat (menus_v2)
+                      </span>
+                    )}
+                  </h3>
+                </div>
+                <form onSubmit={handleSubmitV2} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Nom del plat</label>
+                      <input
+                        type="text"
+                        value={formDataV2.dish_name}
+                        onChange={(e) => setFormDataV2({...formDataV2, dish_name: e.target.value})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-500"
+                        placeholder="Ex: Pasta amb tomàquet"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Dia de la setmana</label>
+                      <select
+                        value={formDataV2.day}
+                        onChange={(e) => setFormDataV2({...formDataV2, day: e.target.value as MenuV2['day']})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-500"
+                      >
+                        <option value="dilluns">Dilluns</option>
+                        <option value="dimarts">Dimarts</option>
+                        <option value="dimecres">Dimecres</option>
+                        <option value="dijous">Dijous</option>
+                        <option value="divendres">Divendres</option>
+                        <option value="dissabte">Dissabte</option>
+                        <option value="diumenge">Diumenge</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipus de menjar</label>
+                      <select
+                        value={formDataV2.meal_type}
+                        onChange={(e) => setFormDataV2({...formDataV2, meal_type: e.target.value as 'dinar' | 'sopar'})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-500"
+                      >
+                        <option value="dinar">Dinar</option>
+                        <option value="sopar">Sopar</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Tipus de dieta</label>
+                      <select
+                        value={formDataV2.diet_type}
+                        onChange={(e) => setFormDataV2({...formDataV2, diet_type: e.target.value as 'omnivora' | 'vegetariana' | 'vegana'})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-500"
+                      >
+                        <option value="omnivora">Omnívora</option>
+                        <option value="vegetariana">Vegetariana</option>
+                        <option value="vegana">Vegana</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Curs del plat</label>
+                      <select
+                        value={formDataV2.course}
+                        onChange={(e) => setFormDataV2({...formDataV2, course: e.target.value as 'primer' | 'segon'})}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 text-gray-500"
+                      >
+                        <option value="primer">🥗 Primer plat</option>
+                        <option value="segon">🍽️ Segon plat</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button type="submit" className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
+                      <Save size={18} />
+                      {editingMenuV2 ? 'Actualitzar' : 'Guardar'}
+                    </button>
+                    <button type="button" onClick={resetFormV2} className="flex items-center gap-2 px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors">
+                      <X size={18} />
+                      Cancel·lar
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {loadingV2 ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600 mx-auto"></div>
+                <p className="mt-2 text-gray-600">Carregant plats...</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {menusV2.length === 0 ? (
+                  <p className="text-gray-600 text-center py-8">
+                    Encara no hi ha plats a menus_v2. Afegeix-ne per provar la votació!
+                  </p>
+                ) : (
+                  menusV2.map((menu) => (
+                    <div
+                      key={menu.id}
+                      className={`flex items-center justify-between p-4 rounded-lg border transition-all ${
+                        editingMenuV2?.id === menu.id
+                          ? 'bg-green-50 border-green-300 shadow-md'
+                          : 'bg-gray-50 border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 flex-1">
+                        <span className="text-lg">{menu.course === 'primer' ? '🥗' : '🍽️'}</span>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-gray-800">{menu.dish_name}</h4>
+                          <div className="flex gap-3 text-sm text-gray-600 mt-1 flex-wrap">
+                            <span className="capitalize">{menu.day}</span>
+                            <span className="capitalize">{menu.meal_type}</span>
+                            <span className="capitalize font-medium text-green-700">{menu.course}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs text-white ${
+                              menu.diet_type === 'omnivora' ? 'bg-red-500' :
+                              menu.diet_type === 'vegetariana' ? 'bg-green-500' :
+                              'bg-emerald-500'
+                            }`}>
+                              {menu.diet_type}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => startEditV2(menu)}
+                          className={`p-2 rounded-lg transition-colors ${
+                            editingMenuV2?.id === menu.id
+                              ? 'text-green-700 bg-green-100'
+                              : 'text-blue-600 hover:bg-blue-100'
+                          }`}
+                        >
+                          <Edit size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteV2(menu.id)}
                           className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                         >
                           <Trash2 size={16} />

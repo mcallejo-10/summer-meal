@@ -273,13 +273,60 @@ function emptyMealStats(): MealVoteStats {
   }
 }
 
+// MenuV2: taula nova amb course obligatori (per al nou sistema de votació per plats)
+export interface MenuV2 {
+  id: string
+  dish_name: string
+  diet_type: 'omnivora' | 'vegetariana' | 'vegana'
+  meal_type: 'dinar' | 'sopar'
+  day: 'dilluns' | 'dimarts' | 'dimecres' | 'dijous' | 'divendres' | 'dissabte' | 'diumenge'
+  course: 'primer' | 'segon'
+  created_at: string
+}
+
+export async function getMenusV2(): Promise<MenuV2[]> {
+  const { data, error } = await supabase
+    .from('menus_v2')
+    .select('*')
+    .order('day', { ascending: true })
+  if (error) { console.error('Error obtenint menus_v2:', error); return [] }
+  return data || []
+}
+
+export async function createMenuV2(menu: Omit<MenuV2, 'id' | 'created_at'>) {
+  const { data, error } = await supabase
+    .from('menus_v2')
+    .insert([{ ...menu, created_at: new Date().toISOString() }])
+    .select()
+  if (error) { console.error('Error creant menu_v2:', error); throw error }
+  return data?.[0]
+}
+
+export async function updateMenuV2(menuId: string, updates: Partial<MenuV2>) {
+  const { data, error } = await supabase
+    .from('menus_v2')
+    .update(updates)
+    .eq('id', menuId)
+    .select()
+  if (error) { console.error('Error actualitzant menu_v2:', error); throw error }
+  return data?.[0]
+}
+
+export async function deleteMenuV2(menuId: string) {
+  const { error } = await supabase
+    .from('menus_v2')
+    .delete()
+    .eq('id', menuId)
+  if (error) { console.error('Error eliminant menu_v2:', error); throw error }
+}
+
 export async function getVoteStatsByDish(date: string): Promise<VoteStatsByDish> {
   const [votesResult, menusResult] = await Promise.all([
     supabase
       .from('votes')
       .select('*, voter:users!votes_user_id_fkey(name)')
       .eq('date', date),
-    supabase.from('menus').select('*'),
+    supabase.from('menus_v2').select('*'),  // llegim de menus_v2
   ])
 
   if (votesResult.error) {
@@ -288,7 +335,7 @@ export async function getVoteStatsByDish(date: string): Promise<VoteStatsByDish>
   }
 
   const votes = votesResult.data || []
-  const menus: Menu[] = menusResult.data || []
+  const menus: MenuV2[] = menusResult.data || []
   const menusMap = new Map(menus.map(m => [m.id, m]))
 
   const stats: VoteStatsByDish = {

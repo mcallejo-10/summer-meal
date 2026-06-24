@@ -7,14 +7,14 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase-browser";
 import {
   getUsers,
-  getMenus,
+  getMenusV2,
   createVote,
   getUserVoteForDate,
   updateVote,
   getAppSettings,
   type User as UserType,
   type Vote,
-  type Menu,
+  type MenuV2 as Menu,
 } from "@/lib/supabase";
 
 import {
@@ -85,7 +85,7 @@ export default function VotarPage() {
       ] = await Promise.all([
         supabase.auth.getUser(),
         getUsers(),
-        getMenus(),
+        getMenusV2(),
         getAppSettings(),
       ]);
 
