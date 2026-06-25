@@ -621,6 +621,8 @@ export default function VotarPage() {
                 );
               })()}
 
+            </>
+          )}
               <div>
                 <button
                   onClick={handleVoteSubmit}
@@ -639,8 +641,6 @@ export default function VotarPage() {
                   </p>
                 )}
               </div>
-            </>
-          )}
 
           
             </>
