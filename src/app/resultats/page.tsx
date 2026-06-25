@@ -3,20 +3,11 @@
 import { useState, useEffect } from "react";
 import { BarChart3, Calendar, ArrowLeft, UserX } from "lucide-react";
 import Link from "next/link";
-import { getVoteStats, getNotVotedUsers, getAppSettings } from "@/lib/supabase";
+import { getVoteStatsByDish, getNotVotedUsers, getAppSettings, type VoteStatsByDish } from "@/lib/supabase";
 import { getResultsDate, formatDateToISO, formatDateToCatalan } from "@/lib/dates";
 
-interface VoteStats {
-  [meal_type: string]: {
-    [choice: string]: {
-      count: number;
-      users: string[];
-    };
-  };
-}
-
 export default function ResultatsPage() {
-  const [voteStats, setVoteStats] = useState<VoteStats | null>(null);
+  const [voteStats, setVoteStats] = useState<VoteStatsByDish | null>(null);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [notVotedUsers, setNotVotedUsers] = useState<{ id: string; name: string }[]>([]);
@@ -38,7 +29,7 @@ export default function ResultatsPage() {
     setLoading(true);
     try {
       const [stats, notVoted] = await Promise.all([
-        getVoteStats(date),
+        getVoteStatsByDish(date),
         getNotVotedUsers(date),
       ]);
       setVoteStats(stats);
@@ -55,39 +46,8 @@ export default function ResultatsPage() {
     return formatDateToCatalan(new Date(year, month - 1, day));
   };
 
-  const getTotalVotes = (
-    choices: Record<string, { count: number; users: string[] }>
-  ) => {
-    return Object.values(choices).reduce((sum, data) => sum + data.count, 0);
-  };
-
-  // Función para generar resumen de votaciones para organizar mesas
-  const generateMealSummary = (
-    choices: Record<string, { count: number; users: string[] }>
-  ) => {
-    const counts = {
-      totalCoberts: 0,
-      omnivors: 0,
-      vegetarians: 0,
-      vegans: 0,
-    };
-
-    Object.entries(choices).forEach(([choice, data]) => {
-      if (choice !== "no_vindré") {
-        counts.totalCoberts += data.count;
-      }
-
-      if (choice === "omnivora") {
-        counts.omnivors += data.count;
-      } else if (choice === "vegetariana") {
-        counts.vegetarians += data.count;
-      } else if (choice === "vegana") {
-        counts.vegans += data.count;
-      }
-    });
-
-    return counts;
-  };
+  const dietShort = (d: string) => d === 'omnivora' ? 'O' : d === 'vegetariana' ? 'V' : 'Ve';
+  const dietColor = (d: string) => d === 'omnivora' ? 'bg-red-500' : d === 'vegetariana' ? 'bg-green-500' : 'bg-emerald-500';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -144,163 +104,89 @@ export default function ResultatsPage() {
                 <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
                 <p className="mt-2 text-gray-600">Carregant resultats...</p>
               </div>
-            ) : voteStats &&
-              Object.keys(voteStats).length > 0 &&
-              Object.values(voteStats).some(
-                (choices) => Object.keys(choices).length > 0
-              ) ? (
+            ) : voteStats ? (
               <div className="space-y-8">
-                {Object.entries(voteStats).map(([mealType, choices]) => {
-                  if (Object.keys(choices).length === 0) return null;
+                {(['dinar', 'sopar'] as const).map(mealType => {
+                  const s = voteStats[mealType];
+                  const hasData = s.primer.length > 0 || s.segon.length > 0 ||
+                    s['no_vindré'].count > 0 || s.porto_el_meu_menjar.count > 0;
+                  if (!hasData) return null;
 
-                  const summary = generateMealSummary(choices);
+                  const mealColor = mealType === 'dinar' ? 'text-yellow-600' : 'text-[#2a747f]';
+                  const pillColor = mealType === 'dinar' ? 'bg-yellow-100 text-yellow-800' : 'bg-teal-100 text-[#2a747f]';
+                  //const bgColor = mealType === 'dinar' ? 'bg-yellow-50 border-yellow-200' : 'bg-teal-50 border-teal-200';
+
+                  const renderDishes = (dishes: typeof s.primer, label: string) =>
+                    dishes.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="font-semibold text-gray-700 mb-3">{label}</h4>
+                        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                          {dishes.map(dish => (
+                            <div key={dish.dish_id} className="bg-white rounded-lg p-4 border shadow-sm">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-800">{dish.dish_name}</span>
+                                <div className="flex items-center gap-1.5">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs text-white ${dietColor(dish.diet_type)}`}>
+                                    {dietShort(dish.diet_type)}
+                                  </span>
+                                  <span className={`px-3 py-1 rounded-full text-sm font-bold ${pillColor}`}>
+                                    {dish.count}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="flex flex-wrap gap-1 mt-2">
+                                {dish.users.map((u, i) => (
+                                  <span key={i} className="px-2 py-0.5 bg-gray-50 rounded text-xs text-gray-600 border">{u}</span>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
 
                   return (
                     <div key={mealType} className="border rounded-lg p-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3
-                          className={`text-2xl font-bold capitalize ${
-                            mealType === "dinar"
-                              ? "text-yellow-600"
-                              : "text-[#2a747f]"
-                          }`}
-                        >
-                          {mealType === "dinar" ? "☀️ Dinar" : "🌙 Sopar"}
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className={`text-2xl font-bold capitalize ${mealColor}`}>
+                          {mealType === 'dinar' ? '☀️ Dinar' : '🌙 Sopar'}
                         </h3>
-                        <div
-                          className={`px-4 py-2 rounded-full text-sm font-bold ${
-                            mealType === "dinar"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-teal-100 text-[#2a747f]"
-                          }`}
-                        >
-                          Total: {getTotalVotes(choices)} persones
-                        </div>
+                        {s.totalCoberts > 0 && (
+                          <div className={`px-4 py-2 rounded-full text-sm font-bold ${pillColor}`}>
+                            {s.totalCoberts} cobert{s.totalCoberts !== 1 ? 's' : ''}
+                          </div>
+                        )}
                       </div>
 
-                      {/* Resumen para organizar mesas */}
-                      <div
-                        className={`rounded-lg p-4 mb-6 ${
-                          mealType === "dinar"
-                            ? "bg-yellow-50 border border-yellow-200"
-                            : "bg-teal-50 border border-teal-200"
-                        }`}
-                      >
-                        <h4
-                          className={`font-semibold mb-3 flex items-center gap-2 ${
-                            mealType === "dinar"
-                              ? "text-yellow-800"
-                              : "text-[#2a747f]"
-                          }`}
-                        >
-                          🍽️ Resum per organitzar les taules
-                        </h4>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-                          <div
-                            className={`p-3 rounded-lg ${
-                              mealType === "dinar"
-                                ? "bg-yellow-100"
-                                : "bg-teal-100"
-                            }`}
-                          >
-                            <div
-                              className={`text-2xl font-bold ${
-                                mealType === "dinar"
-                                  ? "text-yellow-800"
-                                  : "text-[#2a747f]"
-                              }`}
-                            >
-                              {summary.totalCoberts}
-                            </div>
-                            <div
-                              className={`text-sm font-medium ${
-                                mealType === "dinar"
-                                  ? "text-yellow-700"
-                                  : "text-teal-700"
-                              }`}
-                            >
-                              Coberts
-                            </div>
-                          </div>
-                          <div className="p-3 bg-red-100 rounded-lg">
-                            <div className="text-2xl font-bold text-red-800">
-                              {summary.omnivors}
-                            </div>
-                            <div className="text-sm font-medium text-red-700">
-                              Omnívors
-                            </div>
-                          </div>
-                          <div className="p-3 bg-green-100 rounded-lg">
-                            <div className="text-2xl font-bold text-green-800">
-                              {summary.vegetarians}
-                            </div>
-                            <div className="text-sm font-medium text-green-700">
-                              Vegetarians
-                            </div>
-                          </div>
-                          <div className="p-3 bg-emerald-100 rounded-lg">
-                            <div className="text-2xl font-bold text-emerald-800">
-                              {summary.vegans}
-                            </div>
-                            <div className="text-sm font-medium text-emerald-700">
-                              Vegans
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      {renderDishes(s.primer, '🥗 Primers')}
+                      {renderDishes(s.segon, '🍽️ Segons')}
 
-                      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                        {Object.entries(choices).map(([choice, data]) => (
-                          <div
-                            key={choice}
-                            className="bg-gray-50 rounded-lg p-4 border"
-                          >
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-semibold text-gray-800 text-lg">
-                                {choice === "omnivora"
-                                  ? "🥩 Omnívora"
-                                  : choice === "vegetariana"
-                                  ? "🥗 Vegetariana"
-                                  : choice === "vegana"
-                                  ? "🌱 Vegana"
-                                  : choice === "porto_el_meu_menjar"
-                                  ? "🥪 Porto el meu menjar"
-                                  : choice === "no_vindré"
-                                  ? "❌ No vindré"
-                                  : choice}
-                              </h4>
-                              <span
-                                className={`px-3 py-1 rounded-full text-sm font-bold ${
-                                  mealType === "dinar"
-                                    ? "bg-yellow-100 text-yellow-800"
-                                    : "bg-teal-100 text-[#2a747f]"
-                                }`}
-                              >
-                                {data.count}
-                              </span>
-                            </div>
-
-                            {data.users.length > 0 && (
-                              <div className="mt-3">
-                                <p className="text-xs font-medium text-gray-500 mb-2">
-                                  {data.count}{" "}
-                                  {data.count === 1 ? "persona" : "persones"}:
-                                </p>
-                                <div className="flex flex-wrap gap-1">
-                                  {data.users.map((user, index) => (
-                                    <span
-                                      key={index}
-                                      className="px-2 py-1 bg-white rounded text-xs text-gray-700 border"
-                                    >
-                                      {user}
-                                    </span>
-                                  ))}
-                                </div>
+                      {(s['no_vindré'].count > 0 || s.porto_el_meu_menjar.count > 0) && (
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {s['no_vindré'].count > 0 && (
+                            <div className="bg-gray-50 rounded-lg p-4 border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-700">❌ No vindran</span>
+                                <span className="px-3 py-1 rounded-full text-sm font-bold bg-gray-100 text-gray-700">{s['no_vindré'].count}</span>
                               </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
+                              <div className="flex flex-wrap gap-1">
+                                {s['no_vindré'].users.map((u, i) => <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-gray-600 border">{u}</span>)}
+                              </div>
+                            </div>
+                          )}
+                          {s.porto_el_meu_menjar.count > 0 && (
+                            <div className="bg-gray-50 rounded-lg p-4 border">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-medium text-gray-700">🥪 Porten menjar</span>
+                                <span className="px-3 py-1 rounded-full text-sm font-bold bg-blue-100 text-blue-700">{s.porto_el_meu_menjar.count}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {s.porto_el_meu_menjar.users.map((u, i) => <span key={i} className="px-2 py-0.5 bg-white rounded text-xs text-gray-600 border">{u}</span>)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { ChefHat, ArrowLeft, Calendar, FileImage, X, ZoomIn, ZoomOut } from 'lucide-react'
 import Link from 'next/link'
-import { getMenus, type Menu } from '@/lib/supabase'
+import { getMenusV2, type MenuV2 as Menu } from '@/lib/supabase'
 
 export default function MenusPage() {
   const [menus, setMenus] = useState<Menu[]>([])
@@ -34,7 +34,7 @@ export default function MenusPage() {
 
   const loadMenus = async () => {
     try {
-      const menusData = await getMenus()
+      const menusData = await getMenusV2()
       setMenus(menusData)
     } catch (error) {
       console.error('Error carregant menús:', error)
@@ -53,8 +53,18 @@ export default function MenusPage() {
     { value: 'diumenge', label: 'Diumenge' }
   ]
 
-  const getMenusForDay = (day: string, mealType: 'dinar' | 'sopar') => {
-    return menus.filter(menu => menu.day === day && menu.meal_type === mealType)
+  const getMenusForDayAndCourse = (
+    day: string,
+    mealType: 'dinar' | 'sopar',
+    course: 'primer' | 'segon'
+  ) => {
+    return menus.filter((menu) => {
+      if (menu.day !== day || menu.meal_type !== mealType) return false
+
+      // Compatibilitat amb dades antigues: si course és null, el tractem com a primer.
+      if (course === 'primer') return menu.course !== 'segon'
+      return menu.course === 'segon'
+    })
   }
 
   const getDietTypeColor = (dietType: string) => {
@@ -157,31 +167,76 @@ export default function MenusPage() {
                 </span>
               </h2>
               
-              {getMenusForDay(selectedDay, 'dinar').length > 0 ? (
-                <div className="space-y-4">
-                  {getMenusForDay(selectedDay, 'dinar').map((menu) => (
-                    <div key={menu.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800 text-lg mb-2">
-                            {menu.dish_name}
-                          </h3>
-                        </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs text-white font-medium ${getDietTypeColor(menu.diet_type)}`}
-                        >
-                          {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
-                        </span>
-                      </div>
+              {(() => {
+                const primers = getMenusForDayAndCourse(selectedDay, 'dinar', 'primer')
+                const segons = getMenusForDayAndCourse(selectedDay, 'dinar', 'segon')
+                const hasMenus = primers.length > 0 || segons.length > 0
+
+                if (!hasMenus) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <ChefHat className="mx-auto mb-3 text-gray-300" size={48} />
+                      <p>No hi ha menú de dinar per aquest dia</p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <ChefHat className="mx-auto mb-3 text-gray-300" size={48} />
-                  <p>No hi ha menú de dinar per aquest dia</p>
-                </div>
-              )}
+                  )
+                }
+
+                return (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">🥗 Primer plat</h3>
+                      {primers.length > 0 ? (
+                        <div className="space-y-4">
+                          {primers.map((menu) => (
+                            <div key={menu.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-gray-800 text-lg mb-2">
+                                    {menu.dish_name}
+                                  </h4>
+                                </div>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs text-white font-medium ${getDietTypeColor(menu.diet_type)}`}
+                                >
+                                  {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No hi ha primers per aquest dia.</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">🍽️ Segon plat</h3>
+                      {segons.length > 0 ? (
+                        <div className="space-y-4">
+                          {segons.map((menu) => (
+                            <div key={menu.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-gray-800 text-lg mb-2">
+                                    {menu.dish_name}
+                                  </h4>
+                                </div>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs text-white font-medium ${getDietTypeColor(menu.diet_type)}`}
+                                >
+                                  {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No hi ha segons per aquest dia.</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
 
             {/* Sopar */}
@@ -193,31 +248,76 @@ export default function MenusPage() {
                 </span>
               </h2>
               
-              {getMenusForDay(selectedDay, 'sopar').length > 0 ? (
-                <div className="space-y-4">
-                  {getMenusForDay(selectedDay, 'sopar').map((menu) => (
-                    <div key={menu.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800 text-lg mb-2">
-                            {menu.dish_name}
-                          </h3>
-                        </div>
-                        <span
-                          className={`px-3 py-1 rounded-full text-xs text-white font-medium ${getDietTypeColor(menu.diet_type)}`}
-                        >
-                          {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
-                        </span>
-                      </div>
+              {(() => {
+                const primers = getMenusForDayAndCourse(selectedDay, 'sopar', 'primer')
+                const segons = getMenusForDayAndCourse(selectedDay, 'sopar', 'segon')
+                const hasMenus = primers.length > 0 || segons.length > 0
+
+                if (!hasMenus) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <ChefHat className="mx-auto mb-3 text-gray-300" size={48} />
+                      <p>No hi ha menú de sopar per aquest dia</p>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <ChefHat className="mx-auto mb-3 text-gray-300" size={48} />
-                  <p>No hi ha menú de sopar per aquest dia</p>
-                </div>
-              )}
+                  )
+                }
+
+                return (
+                  <div className="space-y-6">
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">🥗 Primer plat</h3>
+                      {primers.length > 0 ? (
+                        <div className="space-y-4">
+                          {primers.map((menu) => (
+                            <div key={menu.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-gray-800 text-lg mb-2">
+                                    {menu.dish_name}
+                                  </h4>
+                                </div>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs text-white font-medium ${getDietTypeColor(menu.diet_type)}`}
+                                >
+                                  {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No hi ha primers per aquest dia.</p>
+                      )}
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-500 mb-3">🍽️ Segon plat</h3>
+                      {segons.length > 0 ? (
+                        <div className="space-y-4">
+                          {segons.map((menu) => (
+                            <div key={menu.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h4 className="font-semibold text-gray-800 text-lg mb-2">
+                                    {menu.dish_name}
+                                  </h4>
+                                </div>
+                                <span
+                                  className={`px-3 py-1 rounded-full text-xs text-white font-medium ${getDietTypeColor(menu.diet_type)}`}
+                                >
+                                  {menu.diet_type.charAt(0).toUpperCase() + menu.diet_type.slice(1)}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-400 italic">No hi ha segons per aquest dia.</p>
+                      )}
+                    </div>
+                  </div>
+                )
+              })()}
             </div>
           </div>
 
