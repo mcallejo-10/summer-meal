@@ -221,8 +221,16 @@ export default function VotarPage() {
     touchStartX.current = null;
   };
 
+  // Filtra plats per dia, tipus de menjar i curs (primer/segon)
+  const getVotingMenusByCourse = (mealType: "dinar" | "sopar", course: "primer" | "segon") => {
+    return menus.filter(
+      m => m.day === getDayNameInCatalan(votingDate) && m.meal_type === mealType && m.course === course
+    );
+  };
+
+  const availableSeconds = getVotingMenusByCourse(selectedMealType, "segon");
   const canConfirm = selectedSpecialChoice !== null ||
-    (selectedFirstCourse !== null && selectedSecondCourse !== null);
+    (selectedFirstCourse !== null && (selectedSecondCourse !== null || availableSeconds.length === 0));
 
   const handleVoteSubmit = async () => {
     if (!canConfirm || !selectedUser || submitting) return;
@@ -231,7 +239,7 @@ export default function VotarPage() {
     try {
       const votePayload = selectedSpecialChoice
         ? { choice: selectedSpecialChoice, first_course_id: null, second_course_id: null }
-        : { choice: null, first_course_id: selectedFirstCourse!.id, second_course_id: selectedSecondCourse!.id };
+        : { choice: null, first_course_id: selectedFirstCourse!.id, second_course_id: selectedSecondCourse?.id ?? null };
 
       if (existingVote) {
         await updateVote(existingVote.id, votePayload);
@@ -253,13 +261,6 @@ export default function VotarPage() {
     } finally {
       setSubmitting(false);
     }
-  };
-
-  // Filtra plats per dia, tipus de menjar i curs (primer/segon)
-  const getVotingMenusByCourse = (mealType: "dinar" | "sopar", course: "primer" | "segon") => {
-    return menus.filter(
-      m => m.day === getDayNameInCatalan(votingDate) && m.meal_type === mealType && m.course === course
-    );
   };
 
   // Función para normalizar nombres y generar URL de avatar
