@@ -228,9 +228,9 @@ export default function VotarPage() {
     );
   };
 
-  const availableSeconds = getVotingMenusByCourse(selectedMealType, "segon");
   const canConfirm = selectedSpecialChoice !== null ||
-    (selectedFirstCourse !== null && (selectedSecondCourse !== null || availableSeconds.length === 0));
+    selectedFirstCourse !== null ||
+    selectedSecondCourse !== null;
 
   const handleVoteSubmit = async () => {
     if (!canConfirm || !selectedUser || submitting) return;
@@ -239,7 +239,7 @@ export default function VotarPage() {
     try {
       const votePayload = selectedSpecialChoice
         ? { choice: selectedSpecialChoice, first_course_id: null, second_course_id: null }
-        : { choice: null, first_course_id: selectedFirstCourse!.id, second_course_id: selectedSecondCourse?.id ?? null };
+        : { choice: null, first_course_id: selectedFirstCourse?.id ?? null, second_course_id: selectedSecondCourse?.id ?? null };
 
       if (existingVote) {
         await updateVote(existingVote.id, votePayload);
@@ -474,10 +474,10 @@ export default function VotarPage() {
                     {selectedSpecialChoice === 'no_vindré' ? '❌ No vindrà' : '🥪 Porta el seu menjar'}
                   </p>
                 )}
-                {selectedFirstCourse && selectedSecondCourse && (
+                {(selectedFirstCourse || selectedSecondCourse) && (
                   <div className="text-sm mt-1">
-                    <p>🥗 Primer: <strong>{selectedFirstCourse.dish_name}</strong></p>
-                    <p>🍽️ Segon: <strong>{selectedSecondCourse.dish_name}</strong></p>
+                    {selectedFirstCourse && <p>🥗 Primer: <strong>{selectedFirstCourse.dish_name}</strong></p>}
+                    {selectedSecondCourse && <p>🍽️ Segon: <strong>{selectedSecondCourse.dish_name}</strong></p>}
                   </div>
                 )}
               </div>
@@ -637,7 +637,7 @@ export default function VotarPage() {
                 </button>
                 {!canConfirm && !selectedSpecialChoice && (
                   <p className="text-center text-xs text-gray-400 mt-2">
-                    Selecciona un primer i un segon plat per confirmar
+                    Selecciona almenys un plat per confirmar
                   </p>
                 )}
               </div>
