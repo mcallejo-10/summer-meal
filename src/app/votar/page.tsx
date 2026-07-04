@@ -122,7 +122,7 @@ export default function VotarPage() {
           setSelectedSpecialChoice(vote.choice as SpecialChoice);
           setSelectedFirstCourse(null);
           setSelectedSecondCourse(null);
-        } else if (vote.first_course_id) {
+        } else if (vote.first_course_id || vote.second_course_id) {
           // Restaurem la selecció de plats del vot existent
           // Usem un setter asíncron un cop menus estigui disponible
           setSelectedFirstCourse((prev) => {

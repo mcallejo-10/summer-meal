@@ -203,15 +203,15 @@ export async function getVotesByDate(date: string) {
 export async function getNotVotedUsers(date: string): Promise<{ id: string; name: string }[]> {
   const [{ data: allUsers }, { data: votes }] = await Promise.all([
     supabase.from('users').select('id, name').order('name'),
-    supabase.from('votes').select('user_id, meal_type, choice, first_course_id').eq('date', date),
+    supabase.from('votes').select('user_id, meal_type, choice, first_course_id, second_course_id').eq('date', date),
   ])
 
   if (!allUsers) return []
 
   const mealTypesByUser = new Map<string, Set<string>>()
-  votes?.forEach((v: { user_id: string; meal_type: string; choice: string | null; first_course_id: string | null }) => {
-    // Vot vàlid: té choice (opció especial o vot antic) o first_course_id (vot per plats)
-    const hasVoted = v.choice !== null || v.first_course_id !== null
+  votes?.forEach((v: { user_id: string; meal_type: string; choice: string | null; first_course_id: string | null; second_course_id: string | null }) => {
+    // Vot vàlid: té choice (opció especial) o primer o segon plat (vot per plats)
+    const hasVoted = v.choice !== null || v.first_course_id !== null || v.second_course_id !== null
     if (hasVoted) {
       if (!mealTypesByUser.has(v.user_id)) mealTypesByUser.set(v.user_id, new Set())
       mealTypesByUser.get(v.user_id)!.add(v.meal_type)
@@ -359,20 +359,22 @@ export async function getVoteStatsByDish(date: string): Promise<VoteStatsByDish>
     } else if (vote.choice === 'porto_el_meu_menjar') {
       stats[mealType].porto_el_meu_menjar.count++
       stats[mealType].porto_el_meu_menjar.users.push(userName)
-    } else if (vote.first_course_id) {
-      // Vot per plats (sistema nou)
+    } else if (vote.first_course_id || vote.second_course_id) {
+      // Vot per plats (sistema nou) - pot ser primer, segon o ambdós
       stats[mealType].totalCoberts++
 
       // Primer plat
-      const firstMenu = menusMap.get(vote.first_course_id)
-      if (firstMenu) {
-        let ds = stats[mealType].primer.find(d => d.dish_id === firstMenu.id)
-        if (!ds) {
-          ds = { dish_id: firstMenu.id, dish_name: firstMenu.dish_name, diet_type: firstMenu.diet_type, count: 0, users: [] }
-          stats[mealType].primer.push(ds)
+      if (vote.first_course_id) {
+        const firstMenu = menusMap.get(vote.first_course_id)
+        if (firstMenu) {
+          let ds = stats[mealType].primer.find(d => d.dish_id === firstMenu.id)
+          if (!ds) {
+            ds = { dish_id: firstMenu.id, dish_name: firstMenu.dish_name, diet_type: firstMenu.diet_type, count: 0, users: [] }
+            stats[mealType].primer.push(ds)
+          }
+          ds.count++
+          ds.users.push(userName)
         }
-        ds.count++
-        ds.users.push(userName)
       }
 
       // Segon plat
